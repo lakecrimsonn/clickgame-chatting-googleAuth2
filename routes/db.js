@@ -16,33 +16,102 @@ conn.connect();
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const session = require("express-session");
-
+var flash = require("connect-flash");
 router.use(
   session({ secret: "secret1", resave: true, saveUninitialized: false })
 );
 router.use(passport.initialize());
 router.use(passport.session());
+router.use(flash());
 
+//회원가입 패스포트
 passport.use(
+  "local-join",
+  new LocalStrategy(
+    {
+      usernameField: "name",
+      passwordField: "pw",
+      passReqToCallback: true,
+    },
+    function (req, name, pw, done) {
+      var passChk = req.body.pwchk;
+      console.log(passChk, name, pw);
+      var date = new Date();
+
+      conn.query(
+        "select * from project1.member where name like ?",
+        name,
+        function (err, rows) {
+          if (err) return done(err);
+          if (rows.length) {
+            console.log("이미 있는 이름");
+            return done(null, false, { message: "이름이 이미 있다우" });
+          } else {
+            conn.query("select join_id from project1.number", function (
+              err,
+              rows
+            ) {
+              if (err) throw err;
+              console.log(rows[0].join_id);
+              var join_id = rows[0].join_id + 1;
+              var params = [join_id, pw, pw, name, date];
+              console.log("생성하는 회원 번호 : " + join_id);
+              console.log(params);
+
+              conn.query(
+                "insert into project1.member values(?,?,?,?,?);",
+                params,
+                function (err, rows) {
+                  if (err) throw err;
+                  if (rows[0]) console.log(rows[0]);
+                }
+              );
+
+              conn.query(
+                "update project1.number set join_id = (?)",
+                join_id,
+                function (err, rows) {
+                  if (err) throw err;
+                }
+              );
+            });
+          }
+        }
+      );
+    }
+  )
+);
+
+//로그인 패스포트
+passport.use(
+  "local-login",
   new LocalStrategy(
     {
       usernameField: "id",
       passwordField: "pw",
       session: true,
-      passReqToCallback: false,
+      passReqToCallback: false, //다른 정보 검증
     },
-    function (입력한아이디, 입력한비번, done) {
-      //console.log(입력한아이디, 입력한비번);
-      db.collection("login").findOne(
-        { id: 입력한아이디 },
-        function (에러, 결과) {
-          if (에러) return done(에러);
+    function (usernameField, passwordField, done) {
+      conn.query(
+        "select * from project1.member where name like (?)",
+        usernameField,
+        function (err, rows) {
+          if (err) return done(err);
 
-          if (!결과)
+          if (rows.length) {
+            console.log("아이디가 이미 있음");
+            return done(null, false, { message: "이미 존재하는 아이디" });
+          }
+          if (!rows[0]) {
+            console.log("아이디 ㄴㄴ");
             return done(null, false, { message: "존재하지않는 아이디요" });
-          if (입력한비번 == 결과.pw) {
-            return done(null, 결과);
+          }
+          //done(서버에러(db에러), 성공시 사용자 db데이터, 에러메세지)
+          if (passwordField == rows[0].pw) {
+            return done(null, rows[0]); //result는 req.user가 되고 user가 된다
           } else {
+            console.log("비번 ㄴㄴ");
             return done(null, false, { message: "비번틀렸어요" });
           }
         }
@@ -50,6 +119,27 @@ passport.use(
     }
   )
 );
+
+//세션을 저장시키는 코드, 로그인 성공시 발동
+//비밀번호 검증을 하고 난 뒤에 result가 user로 매핑이 된다
+//아이디를 이용해서 세션을 쿠키에 저장시킨다
+//서버를 껐다가 키면 세션이 사라진다
+//user는 done(null,result);에서 result다
+passport.serializeUser(function (user, done) {
+  console.log("id: " + user.id + "의 세션이 만들어짐");
+  done(null, user.id); //디시리얼라이즈드의 d_id로 이어진다
+});
+
+//세션 데이터를 가진 사람을 DB에서 찾을 때 사용
+passport.deserializeUser(function (d_id, done) {
+  conn.query("select * from project1.member where id like (?)", d_id, function (
+    err,
+    rows
+  ) {
+    done(null, rows[0]);
+  });
+});
+
 //테스트 조회
 router.get("/send", function (req, res) {
   conn.query("SELECT * FROM test.test_table", function (err, rows) {
@@ -62,50 +152,32 @@ router.get("/send", function (req, res) {
 });
 
 //회원가입
-router.post("/addJoin", function (req, res) {
-  var pw = req.body.pw;
-  var pwChk = req.body.pwchk;
-  var name = req.body.name;
-  var date = new Date();
-
-  conn.query("select join_id from project1.number", function (err, rows) {
-    if (err) throw err;
-    console.log(rows[0].join_id);
-    var join_id = rows[0].join_id + 1;
-    var params = [join_id, pw, pwChk, name, date];
-    console.log("생성하는 회원 번호 : " + join_id);
-    console.log(params);
-
-    conn.query(
-      "insert into project1.member values(?,?,?,?,?);",
-      params,
-      function (err, rows) {
-        if (err) throw err;
-
-        if (rows[0]) console.log(rows[0]);
-        res.redirect("/");
-      }
-    );
-
-    conn.query(
-      "update project1.number set join_id = (?)",
-      join_id,
-      function (err, rows) {
-        if (err) throw err;
-      }
-    );
-  });
-});
+router.post(
+  "/addJoin",
+  passport.authenticate("local-join", {
+    successRedirect: "/main",
+    failureRedirect: "/join",
+    failureFlash: true,
+  }),
+  function (req, res) {}
+);
 
 //로그인
-router.post("/login", function (req, res) {
-  conn.query("SELECT * FROM test.test_table", function (err, rows) {
-    if (err) throw err;
-
-    if (rows[0]) console.log(rows[0]);
-    console.log(rows[0].name);
-    res.redirect("/");
-  });
+router.post("/login", passport.authenticate("local-login"), function (
+  req,
+  res
+) {
+  if (!res) {
+    console.log("아이디 ㄴㄴ2");
+    return res.send(msg.message);
+  }
+  res.redirect("/");
 });
+// router.post("/login", passport.authenticate("local"), function (req, res, msg) {
+//   if (!user) {
+//     return res.send(msg.message);
+//   }
+//   res.redirect("/");
+// });
 
 module.exports = router;
