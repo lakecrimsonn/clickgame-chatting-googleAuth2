@@ -10,7 +10,7 @@
         integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
     <style>
         p {
-            line-height: 18px;
+            line-height: 15px;
         }
 
         div {
@@ -21,15 +21,14 @@
 
         #content {
             padding: 5px;
-            background: #ddd;
             border-radius: 5px;
             overflow-y: scroll;
             border: 1px solid #CCC;
             margin-top: 10px;
-            height: 160px;
+            height: 300px;
         }
 
-        #input {
+        .chatbox {
             border-radius: 2px;
             border: 1px solid #ccc;
             margin-top: 10px;
@@ -41,7 +40,8 @@
             width: 88px;
             display: block;
             float: left;
-            margin-top: 15px;
+            text-align: end;
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -49,10 +49,9 @@
 <body>
     <%- include('nav.ejs') %>
         <div id="content"></div>
-
         <div>
-            <span id="status">Connecting...</span>
-            <input type="text" id="input" disabled="disabled" />
+            <input class="chatbox" type="text" id="status" placeholder="<%=user%>" disabled="disabled" />
+            <input class="chatbox" type="text" id="input" />
         </div>
 
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
@@ -63,9 +62,9 @@
                 var content = $("#content");
                 var input = $("#input");
                 var status = $("#status");
-
                 var myColor = false;
-                var myName = false;
+                var myName = $("#status").text();
+                console.log(myName);
 
                 window.WebSocket = window.WebSocket || window.MozWebSocket;
 
@@ -82,7 +81,6 @@
 
                 connection.onopen = function () {
                     input.removeAttr("disabled");
-                    status.text("Choose name:");
                 };
 
                 connection.onerror = function (error) {
@@ -98,16 +96,15 @@
                 connection.onmessage = function (message) {
                     try {
                         var json = JSON.parse(message.data);
+                        console.log(json);
                     } catch (e) {
                         console.log("Invalid JSON: ", message.data);
                         return;
                     }
 
-                    if (json.type === "color") {
-                        myColor = json.data;
-                        status.text(myName + ": ").css("color", myColor);
+                    if (json.type === "history") {
+                        status.text(myName).css("color", myColor);
                         input.removeAttr("disabled").focus();
-                    } else if (json.type === "history") {
                         for (var i = 0; i < json.data.length; i++) {
                             addMessage(
                                 json.data[i].author,
@@ -117,15 +114,14 @@
                             );
                         }
                     } else if (json.type === "message") {
-                        input.removeAttr("disabled");
+                        status.text(myName).css("color", myColor);
+                        input.removeAttr("disabled").focus();
                         addMessage(
                             json.data.author,
                             json.data.text,
                             json.data.color,
                             new Date(json.data.time)
                         );
-                    } else {
-                        console.log("Hmm..., I've never seen JSON like this:", json);
                     }
                 };
 
@@ -142,10 +138,6 @@
                         $(this).val("");
 
                         input.attr("disabled", "disabled");
-
-                        if (myName === false) {
-                            myName = msg;
-                        }
                     }
                 });
 
@@ -164,11 +156,8 @@
                         color +
                         '">' +
                         author +
-                        "</span> @ " +
-                        (dt.getHours() < 10 ? "0" + dt.getHours() : dt.getHours()) +
-                        ":" +
-                        (dt.getMinutes() < 10 ? "0" + dt.getMinutes() : dt.getMinutes()) +
-                        ": " +
+                        " : " +
+                        "</span> " +
                         message +
                         "</p>"
                     );

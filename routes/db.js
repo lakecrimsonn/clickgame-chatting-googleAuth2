@@ -15,7 +15,7 @@ conn.connect();
 //패스포트
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
-const session = require("express-session");
+const session = require("express-session"); //세션 모듈 로드
 var flash = require("connect-flash");
 router.use(
   session({ secret: "secret1", resave: true, saveUninitialized: true })
@@ -102,11 +102,13 @@ passport.use(
             return done(null, false, { message: "존재하지않는 아이디요" });
           }
           //done(서버에러(db에러), 성공시 사용자 db데이터, 에러메세지)
-          if (pw == rows[0].password) {
-            return done(null, rows[0]); //result는 req.user가 되고 user가 된다
-          } else {
+          if (pw === rows[0].password) {
+            return done(null, rows[0]);
+          } else if (pw !== rows[0].password) {
             console.log("비밀번호 틀림");
             return done(null, false, { message: "비번 틀렸다능" });
+          } else {
+            return done(null, false, { message: "? 입력 안할거임?" });
           }
         }
       );
@@ -169,15 +171,15 @@ router.get("/join", (req, res, next) => {
   });
 });
 
-//로그인 불러오기
+//인덱스가 로그인임
 router.get("/", (req, res, next) => {
   var msg;
   var errMsg = req.flash("error");
   if (errMsg.length) {
     msg = errMsg;
   }
-  res.render("login.ejs", {
-    title: "login",
+  res.render("index.ejs", {
+    title: "index",
     message: msg,
   });
 });
@@ -192,9 +194,48 @@ router.post(
   })
 );
 
+//로그인
+router.get("/login", (req, res, next) => {
+  // if (req.user) {
+  //   console.log("이미 로그인함");
+  //   return res.send(
+  //     "<script>alert('이미 로그인했잖니');location.href='/';</script>"
+  //   );
+  // }
+  var msg;
+  var errMsg = req.flash("error");
+  if (errMsg.length) {
+    msg = errMsg;
+  }
+  res.render("login.ejs", {
+    title: "login",
+    message: msg,
+  });
+});
+
+//로그인2
+router.get("/login2", (req, res, next) => {
+  // if (req.user) {
+  //   console.log("이미 로그인함");
+  //   return res.send(
+  //     "<script>alert('이미 로그인했잖니');location.href='/';</script>"
+  //   );
+  // }
+  var msg;
+  var errMsg = req.flash("error");
+  if (errMsg.length) {
+    msg = errMsg;
+  }
+  res.render("login2.ejs", {
+    title: "login2",
+    message: msg,
+  });
+});
+
 //로그아웃
 router.get("/logout", function (req, res) {
   req.logout();
   res.redirect("/");
 });
+
 module.exports = router;
