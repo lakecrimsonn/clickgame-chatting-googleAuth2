@@ -18,7 +18,7 @@ const LocalStrategy = require("passport-local").Strategy;
 const session = require("express-session");
 var flash = require("connect-flash");
 router.use(
-  session({ secret: "secret1", resave: true, saveUninitialized: false })
+  session({ secret: "secret1", resave: true, saveUninitialized: true })
 );
 router.use(passport.initialize());
 router.use(passport.session());
@@ -35,7 +35,6 @@ passport.use(
     },
     function (req, name, pw, done) {
       var passChk = req.body.pwchk;
-      console.log(passChk, name, pw);
       var date = new Date();
 
       conn.query(
@@ -47,34 +46,34 @@ passport.use(
             console.log("이미 있는 이름");
             return done(null, false, { message: "이름이 이미 있다우" });
           } else {
-            conn.query("select join_id from project1.number", function (
-              err,
-              rows
-            ) {
-              if (err) throw err;
-              console.log(rows[0].join_id);
-              var join_id = rows[0].join_id + 1;
-              var params = [join_id, pw, pw, name, date];
-              console.log("생성하는 회원 번호 : " + join_id);
-              console.log(params);
+            conn.query(
+              "select join_id from project1.number",
+              function (err, rows) {
+                if (err) throw err;
+                console.log(rows[0].join_id);
+                var join_id = rows[0].join_id + 1;
+                var params = [join_id, pw, passChk, name, date];
+                console.log("생성하는 회원 번호 : " + join_id);
+                console.log(params);
 
-              conn.query(
-                "insert into project1.member values(?,?,?,?,?);",
-                params,
-                function (err, rows) {
-                  if (err) throw err;
-                  if (rows[0]) console.log(rows[0]);
-                }
-              );
+                conn.query(
+                  "insert into project1.member values(?,?,?,?,?);",
+                  params,
+                  function (err, rows) {
+                    if (err) throw err;
+                    if (rows[0]) console.log(rows[0]);
+                  }
+                );
 
-              conn.query(
-                "update project1.number set join_id = (?)",
-                join_id,
-                function (err, rows) {
-                  if (err) throw err;
-                }
-              );
-            });
+                conn.query(
+                  "update project1.number set join_id = (?)",
+                  join_id,
+                  function (err, rows) {
+                    if (err) throw err;
+                  }
+                );
+              }
+            );
           }
         }
       );
@@ -90,29 +89,24 @@ passport.use(
       usernameField: "id",
       passwordField: "pw",
       session: true,
-      passReqToCallback: false, //다른 정보 검증
+      passReqToCallback: true,
     },
-    function (usernameField, passwordField, done) {
+    function (req, name, pw, done) {
       conn.query(
         "select * from project1.member where name like (?)",
-        usernameField,
+        name,
         function (err, rows) {
           if (err) return done(err);
-
-          if (rows.length) {
-            console.log("아이디가 이미 있음");
-            return done(null, false, { message: "이미 존재하는 아이디" });
-          }
           if (!rows[0]) {
-            console.log("아이디 ㄴㄴ");
+            console.log("없는 아이디");
             return done(null, false, { message: "존재하지않는 아이디요" });
           }
           //done(서버에러(db에러), 성공시 사용자 db데이터, 에러메세지)
-          if (passwordField == rows[0].pw) {
+          if (pw == rows[0].password) {
             return done(null, rows[0]); //result는 req.user가 되고 user가 된다
           } else {
-            console.log("비번 ㄴㄴ");
-            return done(null, false, { message: "비번틀렸어요" });
+            console.log("비밀번호 틀림");
+            return done(null, false, { message: "비번 틀렸다능" });
           }
         }
       );
@@ -132,12 +126,13 @@ passport.serializeUser(function (user, done) {
 
 //세션 데이터를 가진 사람을 DB에서 찾을 때 사용
 passport.deserializeUser(function (d_id, done) {
-  conn.query("select * from project1.member where id like (?)", d_id, function (
-    err,
-    rows
-  ) {
-    done(null, rows[0]);
-  });
+  conn.query(
+    "select * from project1.member where id like (?)",
+    d_id,
+    function (err, rows) {
+      done(null, rows[0]);
+    }
+  );
 });
 
 //테스트 조회
@@ -151,33 +146,55 @@ router.get("/send", function (req, res) {
   });
 });
 
-//회원가입
+//회원가입 패스포트 검증
 router.post(
   "/addJoin",
   passport.authenticate("local-join", {
-    successRedirect: "/main",
+    successRedirect: "/",
     failureRedirect: "/join",
     failureFlash: true,
-  }),
-  function (req, res) {}
+  })
 );
 
-//로그인
-router.post("/login", passport.authenticate("local-login"), function (
-  req,
-  res
-) {
-  if (!res) {
-    console.log("아이디 ㄴㄴ2");
-    return res.send(msg.message);
+//회원가입 불러오기
+router.get("/join", (req, res, next) => {
+  var msg;
+  var errMsg = req.flash("error");
+  if (errMsg.length) {
+    msg = errMsg;
   }
+  res.render("join.ejs", {
+    title: "join",
+    message: msg,
+  });
+});
+
+//로그인 불러오기
+router.get("/", (req, res, next) => {
+  var msg;
+  var errMsg = req.flash("error");
+  if (errMsg.length) {
+    msg = errMsg;
+  }
+  res.render("login.ejs", {
+    title: "login",
+    message: msg,
+  });
+});
+
+//로그인 패스포트 검증
+router.post(
+  "/login",
+  passport.authenticate("local-login", {
+    successRedirect: "/",
+    failureRedirect: "/login",
+    failureFlash: true,
+  })
+);
+
+//로그아웃
+router.get("/logout", function (req, res) {
+  req.logout();
   res.redirect("/");
 });
-// router.post("/login", passport.authenticate("local"), function (req, res, msg) {
-//   if (!user) {
-//     return res.send(msg.message);
-//   }
-//   res.redirect("/");
-// });
-
 module.exports = router;
