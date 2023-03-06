@@ -1,7 +1,8 @@
 var router = require("express").Router();
 const maria = require("mysql");
 require("dotenv").config();
-
+const session = require("express-session"); //세션 모듈 로드
+var FileStore = require("session-file-store")(session);
 var conn = maria.createConnection({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -12,14 +13,18 @@ var conn = maria.createConnection({
 
 conn.connect();
 
+router.use(
+  session({
+    secret: "secret1",
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 //패스포트
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
-const session = require("express-session"); //세션 모듈 로드
 var flash = require("connect-flash");
-router.use(
-  session({ secret: "secret1", resave: true, saveUninitialized: true })
-);
+
 router.use(passport.initialize());
 router.use(passport.session());
 router.use(flash());

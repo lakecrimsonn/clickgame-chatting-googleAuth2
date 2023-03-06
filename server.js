@@ -1,8 +1,10 @@
 const express = require("express");
 const app = express();
+
 const WebSocketServer = require("websocket").server;
 const http = require("http");
 const port = 8080;
+
 app.use(express.urlencoded({ extended: true }));
 app.use("/", require("./routes/db.js"));
 app.use("/", require("./routes/controller.js"));
@@ -51,6 +53,7 @@ wsServer.on("request", (request) => {
   const index = clients.push(connection) - 1;
   let userName = false;
   let userColor = false;
+
   console.log("connection accepted:");
 
   if (history.length > 0) {
@@ -58,28 +61,27 @@ wsServer.on("request", (request) => {
   }
 
   connection.on("message", (message) => {
-    if (message.type === "utf8") {
-      if (userName == false) {
-        userName = userInfo;
-        userColor = colors.shift();
-      } else {
-        connection.sendUTF(makeResponse("color", userColor));
-        console.log(`User is known as: ${userName} with ${userColor} color`);
-        console.log(`Received Message from ${userName}: ${message.utf8Data}`);
-      }
-
-      const obj = {
-        time: new Date().getTime(),
-        text: htmlEntities(message.utf8Data),
-        author: userName,
-        color: userColor,
-      };
-
-      history.push(obj);
-      history = history.slice(-100);
-
-      clients.forEach((client) => client.sendUTF(makeResponse("message", obj)));
+    if (userName === false) {
+      userName = userInfo;
+      userColor = colors.shift();
     }
+
+    connection.sendUTF(makeResponse("color", userColor));
+    console.log(`User is known as: ${userName} with ${userColor} color`);
+
+    console.log(`Received Message from ${userName}: ${message.utf8Data}`);
+
+    const obj = {
+      time: new Date().getTime(),
+      text: htmlEntities(message.utf8Data),
+      author: userName,
+      color: userColor,
+    };
+
+    history.push(obj);
+    history = history.slice(-100);
+
+    clients.forEach((client) => client.sendUTF(makeResponse("message", obj)));
   });
 
   connection.on("close", (connection) => {
@@ -91,6 +93,7 @@ wsServer.on("request", (request) => {
     }
   });
 });
+
 /**
  * 유틸
  */
