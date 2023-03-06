@@ -1,19 +1,23 @@
 const express = require("express");
 const app = express();
+
 const WebSocketServer = require("websocket").server;
 const http = require("http");
 const port = 8080;
-const maria = require("mysql");
+
 app.use(express.urlencoded({ extended: true }));
-app.use("/", require("./routes/db.js"));
+app.use("/", require("./routes/member.js"));
 app.use("/", require("./routes/controller.js"));
+app.use(express.static("public"));
+
+var conn = require("./lib/db");
 /**
  * 전역 변수
  */
 const colors = ["red", "green", "blue", "magenta", "purple", "plum", "orange"];
 const clients = [];
 let history = [];
-
+var userInfo;
 /**
  * HTTP 서버
  */
@@ -26,6 +30,22 @@ server.listen(port, () => {
 /**
  * WebSocket 서버
  */
+
+app.get("/chat", (req, res, next) => {
+  if (!req.user) {
+    console.log("로그인 하고 오렴");
+    return res.send(
+      "<script>alert('로그인 하고 오렴');location.href='/';</script>"
+    );
+  }
+  if (req.user) {
+    userInfo = req.user.name;
+  }
+  res.render("chatting.ejs", {
+    user: userInfo,
+  });
+});
+
 const wsServer = new WebSocketServer({
   httpServer: server,
 });
@@ -43,31 +63,27 @@ wsServer.on("request", (request) => {
   }
 
   connection.on("message", (message) => {
-    if (message.type === "utf8") {
-      if (userName === false) {
-        userName = htmlEntities(message.utf8Data);
-        userColor = colors.shift();
-        connection.sendUTF(makeResponse("color", userColor));
-
-        console.log(`User is known as: ${userName} with ${userColor} color`);
-      } else {
-        console.log(`Received Message from ${userName}: ${message.utf8Data}`);
-
-        const obj = {
-          time: new Date().getTime(),
-          text: htmlEntities(message.utf8Data),
-          author: userName,
-          color: userColor,
-        };
-
-        history.push(obj);
-        history = history.slice(-100);
-
-        clients.forEach((client) =>
-          client.sendUTF(makeResponse("message", obj))
-        );
-      }
+    if (userName === false) {
+      userName = userInfo;
+      userColor = colors.shift();
     }
+
+    connection.sendUTF(makeResponse("color", userColor));
+    console.log(`User is known as: ${userName} with ${userColor} color`);
+
+    console.log(`Received Message from ${userName}: ${message.utf8Data}`);
+
+    const obj = {
+      time: new Date().getTime(),
+      text: htmlEntities(message.utf8Data),
+      author: userName,
+      color: userColor,
+    };
+
+    history.push(obj);
+    history = history.slice(-100);
+
+    clients.forEach((client) => client.sendUTF(makeResponse("message", obj)));
   });
 
   connection.on("close", (connection) => {
@@ -79,6 +95,8 @@ wsServer.on("request", (request) => {
     }
   });
 });
+
+function sendToDB(obj) {}
 
 /**
  * 유틸

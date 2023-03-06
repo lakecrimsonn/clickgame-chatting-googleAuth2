@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+        integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <style>
+        p {
+            line-height: 15px;
+        }
+
+        div {
+            width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #content {
+            padding: 5px;
+            border-radius: 5px;
+            overflow-y: scroll;
+            border: 1px solid #CCC;
+            margin-top: 10px;
+            height: 300px;
+        }
+
+        .chatbox {
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            padding: 5px;
+            width: 400px;
+        }
+
+        #status {
+            width: 88px;
+            display: block;
+            float: left;
+            text-align: end;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <%- include('nav.ejs') %>
+        <div id="content"></div>
+        <div>
+            <input class="chatbox" type="text" id="status" placeholder="<%=user%>" disabled="disabled" />
+            <input class="chatbox" type="text" id="input" />
+        </div>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+        <script>
+            $(function () {
+                "use strict";
+
+                var content = $("#content");
+                var input = $("#input");
+                var status = $("#status");
+                var myColor = false;
+                var myName = $("#status").text();
+                console.log(myName);
+
+                window.WebSocket = window.WebSocket || window.MozWebSocket;
+
+                if (!window.WebSocket) {
+                    content.html(
+                        $("<p>", { text: "Sorry, but your browser doesn't support WebSocket." })
+                    );
+                    input.hide();
+                    $("span").hide();
+                    return;
+                }
+
+                var connection = new WebSocket("ws://127.0.0.1:8080");
+
+                connection.onopen = function () {
+                    input.removeAttr("disabled");
+                };
+
+                connection.onerror = function (error) {
+                    content.html(
+                        $("<p>", {
+                            text:
+                                "Sorry, but there's some problem with your " +
+                                "connection or the server is down.",
+                        })
+                    );
+                };
+
+                connection.onmessage = function (message) {
+                    try {
+                        var json = JSON.parse(message.data);
+                        console.log(json);
+                    } catch (e) {
+                        console.log("Invalid JSON: ", message.data);
+                        return;
+                    }
+
+                    if (json.type === "history") {
+                        status.text(myName).css("color", myColor);
+                        input.removeAttr("disabled").focus();
+                        for (var i = 0; i < json.data.length; i++) {
+                            addMessage(
+                                json.data[i].author,
+                                json.data[i].text,
+                                json.data[i].color,
+                                new Date(json.data[i].time)
+                            );
+                        }
+                    } else if (json.type === "message") {
+                        status.text(myName).css("color", myColor);
+                        input.removeAttr("disabled").focus();
+                        addMessage(
+                            json.data.author,
+                            json.data.text,
+                            json.data.color,
+                            new Date(json.data.time)
+                        );
+                    }
+                };
+
+                input.keydown(function (e) {
+                    if (e.keyCode === 13) {
+                        var msg = $(this).val();
+
+                        if (!msg) {
+                            return;
+                        }
+
+                        connection.send(msg);
+
+                        $(this).val("");
+
+                        input.attr("disabled", "disabled");
+                    }
+                });
+
+                setInterval(function () {
+                    if (connection.readyState !== 1) {
+                        status.text("Error");
+                        input
+                            .attr("disabled", "disabled")
+                            .val("Unable to communicate with the WebSocket server.");
+                    }
+                }, 3000);
+
+                function addMessage(author, message, color, dt) {
+                    content.prepend(
+                        '<p><span style="color:' +
+                        color +
+                        '">' +
+                        author +
+                        " : " +
+                        "</span> " +
+                        message +
+                        "</p>"
+                    );
+                }
+            });
+
+        </script>
+        <!-- Optional JavaScript; choose one of the two! -->
+        <!-- Option 1: jQuery and Bootstrap Bundle (includes Popper) -->
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js"
+            integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+            crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+            crossorigin="anonymous"></script>
+
+        <!-- Option 2: Separate Popper and Bootstrap JS -->
+        <!--
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js" integrity="sha384-+sLIOodYLS7CIrQpBjl+C7nPvqq+FbNUBDunl/OZv93DB7Ln/533i8e/mZXLi/P+" crossorigin="anonymous"></script>
+    -->
+</body>
+
+</html>
