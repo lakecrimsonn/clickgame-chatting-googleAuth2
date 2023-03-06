@@ -1,23 +1,14 @@
 var router = require("express").Router();
-const maria = require("mysql");
-require("dotenv").config();
+var conn = require("../lib/db");
 const session = require("express-session"); //세션 모듈 로드
 var FileStore = require("session-file-store")(session);
-var conn = maria.createConnection({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PW,
-  database: process.env.DB_DB,
-});
-
-conn.connect();
 
 router.use(
   session({
     secret: "secret1",
-    resave: false,
-    saveUninitialized: true,
+    resave: true,
+    saveUninitialized: false,
+    store: new FileStore(),
   })
 );
 //패스포트

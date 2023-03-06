@@ -6,9 +6,11 @@ const http = require("http");
 const port = 8080;
 
 app.use(express.urlencoded({ extended: true }));
-app.use("/", require("./routes/db.js"));
+app.use("/", require("./routes/member.js"));
 app.use("/", require("./routes/controller.js"));
 app.use(express.static("public"));
+
+var conn = require("./lib/db");
 /**
  * 전역 변수
  */
@@ -93,6 +95,8 @@ wsServer.on("request", (request) => {
     }
   });
 });
+
+function sendToDB(obj) {}
 
 /**
  * 유틸
