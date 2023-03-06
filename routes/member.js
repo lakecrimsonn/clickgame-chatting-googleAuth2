@@ -1,14 +1,24 @@
 var router = require("express").Router();
-var conn = require("../lib/db");
+var conn = require("../lib/db")();
 const session = require("express-session"); //세션 모듈 로드
-var FileStore = require("session-file-store")(session);
+//var FileStore = require("session-file-store")(session);
+var MySQLStore = require("express-mysql-session")(session);
+
+var options = {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PW,
+  database: process.env.DB_DB,
+};
 
 router.use(
   session({
     secret: "secret1",
-    resave: true,
-    saveUninitialized: false,
-    store: new FileStore(),
+    resave: false,
+    saveUninitialized: true,
+    //store: new FileStore(),
+    store: new MySQLStore(options),
   })
 );
 //패스포트
@@ -42,34 +52,34 @@ passport.use(
             console.log("이미 있는 이름");
             return done(null, false, { message: "이름이 이미 있다우" });
           } else {
-            conn.query(
-              "select join_id from project1.number",
-              function (err, rows) {
-                if (err) throw err;
-                console.log(rows[0].join_id);
-                var join_id = rows[0].join_id + 1;
-                var params = [join_id, pw, passChk, name, date];
-                console.log("생성하는 회원 번호 : " + join_id);
-                console.log(params);
+            conn.query("select join_id from project1.number", function (
+              err,
+              rows
+            ) {
+              if (err) throw err;
+              console.log(rows[0].join_id);
+              var join_id = rows[0].join_id + 1;
+              var params = [join_id, pw, passChk, name, date];
+              console.log("생성하는 회원 번호 : " + join_id);
+              console.log(params);
 
-                conn.query(
-                  "insert into project1.member values(?,?,?,?,?);",
-                  params,
-                  function (err, rows) {
-                    if (err) throw err;
-                    if (rows[0]) console.log(rows[0]);
-                  }
-                );
+              conn.query(
+                "insert into project1.member values(?,?,?,?,?);",
+                params,
+                function (err, rows) {
+                  if (err) throw err;
+                  if (rows[0]) console.log(rows[0]);
+                }
+              );
 
-                conn.query(
-                  "update project1.number set join_id = (?)",
-                  join_id,
-                  function (err, rows) {
-                    if (err) throw err;
-                  }
-                );
-              }
-            );
+              conn.query(
+                "update project1.number set join_id = (?)",
+                join_id,
+                function (err, rows) {
+                  if (err) throw err;
+                }
+              );
+            });
           }
         }
       );
@@ -101,7 +111,7 @@ passport.use(
           if (pw === rows[0].password) {
             return done(null, rows[0]);
           } else if (pw !== rows[0].password) {
-            console.log("비밀번호 틀림");
+            console.log("비밀번호 틀림" + pw + rows[0].password);
             return done(null, false, { message: "비번 틀렸다능" });
           } else {
             return done(null, false, { message: "? 입력 안할거임?" });
@@ -124,13 +134,12 @@ passport.serializeUser(function (user, done) {
 
 //세션 데이터를 가진 사람을 DB에서 찾을 때 사용
 passport.deserializeUser(function (d_id, done) {
-  conn.query(
-    "select * from project1.member where id like (?)",
-    d_id,
-    function (err, rows) {
-      done(null, rows[0]);
-    }
-  );
+  conn.query("select * from project1.member where id like (?)", d_id, function (
+    err,
+    rows
+  ) {
+    done(null, rows[0]);
+  });
 });
 
 //테스트 조회
