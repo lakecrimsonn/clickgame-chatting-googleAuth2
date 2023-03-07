@@ -10,7 +10,7 @@ app.use("/", require("./routes/member.js"));
 app.use("/", require("./routes/controller.js"));
 app.use(express.static("public"));
 
-var conn = require("./lib/db");
+var conn = require("./lib/db")();
 /**
  * 전역 변수
  */
@@ -70,11 +70,10 @@ wsServer.on("request", (request) => {
 
     connection.sendUTF(makeResponse("color", userColor));
     console.log(`User is known as: ${userName} with ${userColor} color`);
-
     console.log(`Received Message from ${userName}: ${message.utf8Data}`);
 
     const obj = {
-      time: new Date().getTime(),
+      time: new Date(),
       text: htmlEntities(message.utf8Data),
       author: userName,
       color: userColor,
@@ -82,6 +81,7 @@ wsServer.on("request", (request) => {
 
     history.push(obj);
     history = history.slice(-100);
+    sendToDB(Object.values(obj));
 
     clients.forEach((client) => client.sendUTF(makeResponse("message", obj)));
   });
@@ -96,7 +96,17 @@ wsServer.on("request", (request) => {
   });
 });
 
-function sendToDB(obj) {}
+function sendToDB(objDB) {
+  console.log(objDB);
+  conn.query(
+    "insert into project1.chatlog values(?,?,?,?);",
+    objDB,
+    function (err, rows) {
+      if (err) throw err;
+      if (rows[0]) console.log(rows[0]);
+    }
+  );
+}
 
 /**
  * 유틸
