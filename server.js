@@ -32,6 +32,7 @@ server.listen(port, () => {
  */
 
 app.get("/chat", (req, res, next) => {
+  console.log(req.session);
   if (!req.user) {
     console.log("로그인 하고 오렴");
     return res.send(
@@ -102,14 +103,13 @@ wsServer.on("request", (request) => {
 
 function sendToDB(objDB) {
   console.log(objDB);
-  conn.query(
-    "insert into project1.chatlog values(?,?,?,?);",
-    objDB,
-    function (err, rows) {
-      if (err) throw err;
-      if (rows[0]) console.log(rows[0]);
-    }
-  );
+  conn.query("insert into project1.chatlog values(?,?,?,?);", objDB, function (
+    err,
+    rows
+  ) {
+    if (err) throw err;
+    if (rows[0]) console.log(rows[0]);
+  });
 }
 
 /**

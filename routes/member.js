@@ -2,7 +2,7 @@ var router = require("express").Router();
 var conn = require("../lib/db")();
 const session = require("express-session"); //세션 모듈 로드
 //var FileStore = require("session-file-store")(session);
-var MySQLStore = require("express-mysql-session")(session);
+const MySQLStore = require("express-mysql-session")(session);
 
 var options = {
   host: process.env.DB_HOST,
@@ -12,15 +12,17 @@ var options = {
   database: process.env.DB_DB,
 };
 
+const sessionStore = new MySQLStore(options);
 router.use(
   session({
     secret: "secret1",
     resave: false,
     saveUninitialized: true,
     //store: new FileStore(),
-    store: new MySQLStore(options),
+    store: sessionStore,
   })
 );
+
 //패스포트
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
@@ -107,7 +109,6 @@ passport.use(
             console.log("없는 아이디");
             return done(null, false, { message: "존재하지않는 아이디요" });
           }
-          //done(서버에러(db에러), 성공시 사용자 db데이터, 에러메세지)
           if (pw === rows[0].password) {
             return done(null, rows[0]);
           } else if (pw !== rows[0].password) {
@@ -128,18 +129,19 @@ passport.use(
 //서버를 껐다가 키면 세션이 사라진다
 //user는 done(null,result);에서 result다
 passport.serializeUser(function (user, done) {
-  console.log("id: " + user.id + "의 세션이 만들어짐");
-  done(null, user.id); //디시리얼라이즈드의 d_id로 이어진다
+  console.log("name: " + user.name + "의 세션이 만들어짐");
+  done(null, user.name); //디시리얼라이즈드의 d_id로 이어진다
 });
 
 //세션 데이터를 가진 사람을 DB에서 찾을 때 사용
 passport.deserializeUser(function (d_id, done) {
-  conn.query("select * from project1.member where id like (?)", d_id, function (
-    err,
-    rows
-  ) {
-    done(null, rows[0]);
-  });
+  conn.query(
+    "select * from project1.member where name like (?)",
+    d_id,
+    function (err, rows) {
+      done(null, rows[0]);
+    }
+  );
 });
 
 //테스트 조회
@@ -193,11 +195,37 @@ router.get("/", (req, res, next) => {
 router.post(
   "/login",
   passport.authenticate("local-login", {
-    successRedirect: "/",
+    successRedirect: "/chkSession",
     failureRedirect: "/login",
     failureFlash: true,
   })
 );
+
+//중복세션 검사
+// router.get("/chkSession", (req, res, next) => {
+//   var msg;
+//   var errMsg = req.flash("error");
+//   const sessionID = req.session.id;
+//   if (errMsg.length) {
+//     msg = errMsg;
+//   }
+//   //세션스토어에서 데이터 가져오기
+//   sessionStore.get(sessionID, (error, sessionData) => {
+//     if (error) {
+//       console.error(error);
+//     }
+
+//     if (sessionData.passport.user) {
+//       console.log(sessionData.passport.user + cnt);
+//     } else {
+//       //console.log("이미 로그인된 아이디");
+//       res.render("index.ejs");
+//     }
+//     if (cnt >= 2) {
+//       res.redirect("/logout");
+//     }
+//   });
+// });
 
 //로그인
 router.get("/login", (req, res, next) => {
@@ -239,7 +267,8 @@ router.get("/login2", (req, res, next) => {
 
 //로그아웃
 router.get("/logout", function (req, res) {
-  req.logout();
+  console.log("로그아웃됨");
+  req.session.destroy();
   res.redirect("/");
 });
 
