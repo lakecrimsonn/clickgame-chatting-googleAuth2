@@ -15,28 +15,56 @@
     <%- include('nav.ejs') %>
         <div class="container mt-3">
             <h1>ball game</h1>
-            <button id="btnCreate" class="btn btn-danger">new game</button>
-            <button id="btnJoin" class="btn btn-danger">join game</button>
-            <input type="text" id="txtGameId" />
-            <div id="divPlayers"></div>
-            <div id="divBoard"></div>
+            <div>
+                <div class="mt-2">
+                    <button class="btn btn-outline-secondary btn-sm">ID</button>
+                    <button id="userId" type="button" class="btn btn-outline-dark btn-sm" value="<%=user%>">
+                        <%=user%>
+                    </button>
+                </div>
+                <div class="input-group mt-2">
+                    <button id="btnCreate" type="button" class="btn btn-danger mr-1">new
+                        game</button>
+                    <button id="btnJoin" type="button" class="btn btn-danger mr-1">join
+                        game</button>
+                    <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled="disabled">ready</button>
+                    <input id="txtGameId" type="text" class="form-control" placeholder="Game ID please">
+                </div>
+            </div>
+        </div>
+        <div id="divPlayers"></div>
+        <div id="divBoard"></div>
         </div>
         <script>
             //not good idea open websocket as soon as website is showed
             //websocket has been opend in port 9090
             let ws = new WebSocket("ws://localhost:9090");
-            let clientId = null;
-            let gameId = null;
-            let playerColor = null;
 
-            //new game button
+
             const btnCreate = document.getElementById("btnCreate");
             const btnJoin = document.getElementById("btnJoin");
             const txtGameId = document.getElementById("txtGameId");
             const divPlayers = document.getElementById("divPlayers");
             const divBoard = document.getElementById("divBoard");
+            const userId = document.getElementById("userId");
+            const btnReady = document.getElementById("btnReady");
 
-            //wiring events
+            console.log(userId.value)
+
+            let clientId = null;
+            let playerColor = null;
+            let gameId = null;
+            let ready = false;
+
+            //very first connection
+            ws.onopen = function () {
+                clientId = userId.value
+                const payLoad = {
+                    method: "connect",
+                    clientId: clientId
+                };
+                ws.send(JSON.stringify(payLoad));
+            };
 
             //new game
             btnCreate.addEventListener("click", (e) => {
@@ -50,12 +78,25 @@
             //join
             btnJoin.addEventListener("click", (e) => {
                 if (gameId === null) gameId = txtGameId.value;
-                console.log(gameId);
-                //console.log(txtGameId.value);
+                console.log("join game : " + gameId);
                 const payLoad = {
                     method: "join",
                     clientId: clientId,
                     gameId: gameId,
+                };
+                btnReady.disabled = false;
+                ws.send(JSON.stringify(payLoad));
+            });
+
+            //ready
+            btnReady.addEventListener("click", (e) => {
+                console.log("ready btn clicked");
+                ready = true;
+                const payLoad = {
+                    method: "ready",
+                    clientId: clientId,
+                    gameId: gameId,
+                    ready: ready,
                 };
                 ws.send(JSON.stringify(payLoad));
             });
@@ -65,22 +106,10 @@
                 //message.data, the data sever has been sent
                 const response = JSON.parse(message.data);
 
-                //connect
-                if (response.method === "connect") {
-                    clientId = response.clientId;
-                    console.log("client id has been set successfully : " + clientId);
-                }
-
                 //create
                 if (response.method === "create") {
                     gameId = response.game.id;
-                    console.log(
-                        "game has been created with game id : " +
-                        response.game.id +
-                        " with " +
-                        response.game.balls +
-                        " balls"
-                    );
+                    console.log(response.game.id);
                 }
 
                 //update
@@ -99,7 +128,7 @@
                     const game = response.game;
 
                     while (divPlayers.firstChild)
-                        disPlayers.removeChild(divPlayers.firstChild);
+                        divPlayers.removeChild(divPlayers.firstChild);
 
                     game.clients.forEach((c) => {
                         const d = document.createElement("div");
@@ -108,7 +137,9 @@
                         d.textContent = c.clientId;
                         divPlayers.appendChild(d);
 
-                        if (c.clientId === clientId) playerColor = c.color;
+                        if (c.clientId === clientId) {
+                            playerColor = c.color;
+                        }
                     });
 
                     while (divBoard.firstChild) divBoard.removeChild(divBoard.firstChild);

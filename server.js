@@ -1,6 +1,5 @@
 const express = require("express");
 const app = express();
-
 const WebSocketServer = require("websocket").server;
 const http = require("http");
 const port = 8080;
@@ -25,8 +24,17 @@ const server = http.createServer(app);
 
 server.listen(port, () => {
   console.log("server listen:", port);
+  deleteSessions();
 });
 
+//서버 재시작시 세션 없애기
+const deleteSessions = () => {
+  conn.query("truncate project1.sessions", (err, result) => {
+    if (err) {
+      console.error(err);
+    }
+  });
+};
 /**
  * WebSocket 서버
  */
@@ -47,7 +55,18 @@ app.get("/chat", (req, res, next) => {
 });
 
 app.get("/balls", (req, res, next) => {
-  res.render("balls.ejs", {});
+  // if (!req.user) {
+  //   console.log("로그인 하고 오렴");
+  //   return res.send(
+  //     "<script>alert('로그인 하고 오렴');location.href='/';</script>"
+  //   );
+  // }
+  if (req.user) {
+    userInfo = req.user.name;
+  }
+  res.render("balls.ejs", {
+    user: userInfo,
+  });
 });
 
 const wsServer = new WebSocketServer({
@@ -131,7 +150,7 @@ const httpServer = http.createServer();
 const websocketServer = require("websocket").server;
 
 //tcp connection
-httpServer.listen(9090, () => console.log("listening on ws port 9090"));
+httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 
 //hashmap
 const clients = {};
@@ -150,7 +169,6 @@ wsServer2.on("request", (request) => {
 
   //listen open and close event
   connection.on("open", () => console.log("opened"));
-  connection.on("close", () => console.log("closed"));
 
   //space for all the message from the client
   connection.on("message", (message) => {
@@ -158,17 +176,27 @@ wsServer2.on("request", (request) => {
     //make string data to JSON
     const result = JSON.parse(message.utf8Data);
 
+    //set client ID
+    if (result.method === "connect") {
+      const clientId = result.clientId;
+      console.log("client id : " + clientId);
+      clients[clientId] = {
+        connection: connection,
+      };
+    }
+
     //verify what message client sent
     if (result.method === "create") {
       //who is a client?
       const clientId = result.clientId;
-
+      console.log("create user id : " + clientId);
       //a game client want to do
       const gameId = guid();
       games[gameId] = {
         id: gameId,
         balls: 20,
         clients: [],
+        allReady: false,
       };
 
       const payLoad = {
@@ -185,7 +213,6 @@ wsServer2.on("request", (request) => {
       const clientId = result.clientId;
       const gameId = result.gameId;
       const game = games[gameId];
-
       if (game.clients.length >= 4) {
         //sorry max player reached
         console.log("sorry max player reached");
@@ -200,10 +227,8 @@ wsServer2.on("request", (request) => {
       game.clients.push({
         clientId: clientId,
         color: color,
+        ready: false,
       });
-
-      //start the game
-      if (game.clients.length === 2) updateGameState();
 
       const payLoad = {
         method: "join",
@@ -214,6 +239,9 @@ wsServer2.on("request", (request) => {
       game.clients.forEach((c) => {
         clients[c.clientId].connection.send(JSON.stringify(payLoad));
       });
+
+      //start the game
+      if (game.clients.length >= 2) updateGameState();
     }
 
     if (result.method === "play") {
@@ -225,21 +253,36 @@ wsServer2.on("request", (request) => {
       state[ballId] = color;
       games[gameId].state = state;
     }
+
+    //ready
+    if (result.method === "ready") {
+      const clientId = result.clientId;
+      const gameId = result.gameId;
+
+      console.log(clientId + " " + gameId);
+      console.log(games[gameId].clients[clientId]);
+      console.log(games[gameId].clients[clientId]);
+      console.log(games[gameId].clients);
+
+      games[gameId].clients.forEach((c) => {
+        console.log(clients[c.clientId]);
+      });
+    }
   });
 
   //very first connection
   //generate a new clientId from guid()
-  const clientId = guid();
+  //const clientId = guid();
 
   //can find specific client's connection
-  clients[clientId] = {
-    connection: connection,
-  };
+  // clients[clientId] = {
+  //   connection: connection,
+  // };
 
   //the message to send called method:'connect'
   const payLoad = {
     method: "connect",
-    clientId: clientId,
+    //clientId: clientId,
   };
 
   //respond to client with JSON changed to string
@@ -260,6 +303,7 @@ function updateGameState() {
   setTimeout(updateGameState, 500);
 }
 //guid generator
+
 const guid = () => {
   function s4() {
     return Math.floor((1 + Math.random()) * 0x10000)

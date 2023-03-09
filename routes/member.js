@@ -16,9 +16,9 @@ router.use(
   session({
     secret: "secret1",
     resave: false,
-    saveUninitialized: true,
-    //store: new FileStore(),
+    saveUninitialized: false,
     store: new MySQLStore(options),
+    //store: new FileStore(),
   })
 );
 //패스포트
@@ -52,34 +52,34 @@ passport.use(
             console.log("이미 있는 이름");
             return done(null, false, { message: "이름이 이미 있다우" });
           } else {
-            conn.query("select join_id from project1.number", function (
-              err,
-              rows
-            ) {
-              if (err) throw err;
-              console.log(rows[0].join_id);
-              var join_id = rows[0].join_id + 1;
-              var params = [join_id, pw, passChk, name, date];
-              console.log("생성하는 회원 번호 : " + join_id);
-              console.log(params);
+            conn.query(
+              "select join_id from project1.number",
+              function (err, rows) {
+                if (err) throw err;
+                console.log(rows[0].join_id);
+                var join_id = rows[0].join_id + 1;
+                var params = [join_id, pw, passChk, name, date];
+                console.log("생성하는 회원 번호 : " + join_id);
+                console.log(params);
 
-              conn.query(
-                "insert into project1.member values(?,?,?,?,?);",
-                params,
-                function (err, rows) {
-                  if (err) throw err;
-                  if (rows[0]) console.log(rows[0]);
-                }
-              );
+                conn.query(
+                  "insert into project1.member values(?,?,?,?,?);",
+                  params,
+                  function (err, rows) {
+                    if (err) throw err;
+                    if (rows[0]) console.log(rows[0]);
+                  }
+                );
 
-              conn.query(
-                "update project1.number set join_id = (?)",
-                join_id,
-                function (err, rows) {
-                  if (err) throw err;
-                }
-              );
-            });
+                conn.query(
+                  "update project1.number set join_id = (?)",
+                  join_id,
+                  function (err, rows) {
+                    if (err) throw err;
+                  }
+                );
+              }
+            );
           }
         }
       );
@@ -128,18 +128,19 @@ passport.use(
 //서버를 껐다가 키면 세션이 사라진다
 //user는 done(null,result);에서 result다
 passport.serializeUser(function (user, done) {
-  console.log("id: " + user.id + "의 세션이 만들어짐");
-  done(null, user.id); //디시리얼라이즈드의 d_id로 이어진다
+  console.log("id: " + user.name + "의 세션이 만들어짐");
+  done(null, user.name); //디시리얼라이즈드의 d_id로 이어진다
 });
 
 //세션 데이터를 가진 사람을 DB에서 찾을 때 사용
-passport.deserializeUser(function (d_id, done) {
-  conn.query("select * from project1.member where id like (?)", d_id, function (
-    err,
-    rows
-  ) {
-    done(null, rows[0]);
-  });
+passport.deserializeUser(function (d_name, done) {
+  conn.query(
+    "select * from project1.member where name like (?)",
+    d_name,
+    function (err, rows) {
+      done(null, rows[0]);
+    }
+  );
 });
 
 //테스트 조회
@@ -176,7 +177,7 @@ router.get("/join", (req, res, next) => {
   });
 });
 
-//인덱스가 로그인임
+//인덱스
 router.get("/", (req, res, next) => {
   var msg;
   var errMsg = req.flash("error");
@@ -192,12 +193,29 @@ router.get("/", (req, res, next) => {
 //로그인 패스포트 검증
 router.post(
   "/login",
+  isLoggedIn,
   passport.authenticate("local-login", {
     successRedirect: "/",
     failureRedirect: "/login",
     failureFlash: true,
   })
 );
+
+//중복접속 확인
+function isLoggedIn(req, res, next) {
+  if (!req.session.passport) {
+    return next();
+  } else if (req.session.passport.user === req.body.id) {
+    console.log(req.session.passport.user + "가 이미 로그인 되어있습니다");
+    res.render("login.ejs", {
+      message: "이미 로그인 되어있습니다",
+    });
+  } else {
+    res.render("login.ejs", {
+      message: "다른 아이디로 로그인 할 수 없습니다",
+    });
+  }
+}
 
 //로그인
 router.get("/login", (req, res, next) => {
@@ -238,9 +256,16 @@ router.get("/login2", (req, res, next) => {
 });
 
 //로그아웃
-router.get("/logout", function (req, res) {
-  req.logout();
-  res.redirect("/");
+router.get("/logout", (req, res) => {
+  if (!req.session) {
+    console.log("로그인하지 않음");
+    res.redirect("/");
+  }
+  req.session.destroy((err) => {
+    if (err) throw err;
+    res.redirect("/");
+    console.log("세션 종료");
+  });
 });
 
 module.exports = router;
