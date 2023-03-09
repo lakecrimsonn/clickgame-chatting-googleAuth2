@@ -154,7 +154,9 @@ httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 
 //hashmap
 const clients = {};
+const clientsWaiting = {};
 const games = {};
+const bangHistory = {};
 
 //websocket connection and send http server as JSON
 const wsServer2 = new websocketServer({
@@ -183,6 +185,25 @@ wsServer2.on("request", (request) => {
       clients[clientId] = {
         connection: connection,
       };
+
+      conn.query("select * from project1.banghistory", (err, rows) => {
+        console.log("DB connect : " + JSON.stringify(rows));
+        if (rows) {
+          rows.forEach((e) => {
+            console.log("forEach : " + JSON.stringify(e));
+            const payLoad = {
+              method: "makeBang",
+              clientId: e.clientid,
+              gameId: e.gameid,
+            };
+            clients[clientId].connection.send(JSON.stringify(payLoad));
+          });
+        }
+      });
+      // if (Object.keys(bangHistory).length !== 0) {
+      //   console.log("hi history");
+
+      // }
     }
 
     //verify what message client sent
@@ -202,17 +223,24 @@ wsServer2.on("request", (request) => {
       const payLoad = {
         method: "create",
         game: games[gameId],
+        clientId: clientId,
       };
 
       //send response to a client
       const con = clients[clientId].connection;
       con.send(JSON.stringify(payLoad));
+
+      //create game bang
+      makeGameBang(clientId, gameId);
     }
 
     if (result.method === "join") {
       const clientId = result.clientId;
       const gameId = result.gameId;
       const game = games[gameId];
+      console.log(game);
+      console.log("joined Game ID : " + game.id);
+      console.log("joined Client ID : " + clientId);
       if (game.clients.length >= 4) {
         //sorry max player reached
         console.log("sorry max player reached");
@@ -222,13 +250,15 @@ wsServer2.on("request", (request) => {
       const color = { 0: "Red", 1: "Green", 2: "Blue", 3: "Yellow" }[
         game.clients.length
       ];
-
+      console.log("color : " + color);
       //all of the clients share same game id
       game.clients.push({
         clientId: clientId,
         color: color,
         ready: false,
       });
+
+      console.log("game.clients : " + JSON.stringify(game));
 
       const payLoad = {
         method: "join",
@@ -241,17 +271,21 @@ wsServer2.on("request", (request) => {
       });
 
       //start the game
-      if (game.clients.length >= 2) updateGameState();
+      if (game.clients.length >= 2) {
+        updateGameState();
+      }
     }
 
     if (result.method === "play") {
       const gameId = result.gameId;
       const ballId = result.ballId;
       const color = result.color;
+      console.log(color);
       let state = games[gameId].state;
       if (!state) state = {};
       state[ballId] = color;
       games[gameId].state = state;
+      console.log(state);
     }
 
     //ready
@@ -289,8 +323,8 @@ wsServer2.on("request", (request) => {
   connection.send(JSON.stringify(payLoad));
 });
 function updateGameState() {
-  //{"gameid", asfsaf}
   for (const g of Object.keys(games)) {
+    //g = game id
     const game = games[g];
     const payLoad = {
       method: "update",
@@ -302,6 +336,39 @@ function updateGameState() {
   }
   setTimeout(updateGameState, 500);
 }
+
+function makeGameBang(clientId, gameId) {
+  if (!clientId || !gameId) {
+    return;
+  }
+  const payLoad = {
+    method: "makeBang",
+    gameId: gameId,
+    clientId: clientId,
+  };
+  clients[clientId].connection.send(JSON.stringify(payLoad));
+
+  var gameInfo = [clientId, gameId];
+  conn.query(
+    "insert into project1.banghistory values (?,?)",
+    gameInfo,
+    (err, result) => {
+      if (err) {
+        console.error(err);
+      }
+    }
+  );
+  conn.query("select * from project1.banghistory", (err, rows) => {
+    console.log("db에서 온 데이터 : " + JSON.stringify(rows));
+  });
+
+  bangHistory[clientId] = {
+    clientId: clientId,
+    gameId: gameId,
+  };
+  console.log("makeBang : " + JSON.stringify(bangHistory[clientId]));
+}
+
 //guid generator
 
 const guid = () => {

@@ -14,7 +14,7 @@
 <body>
     <%- include('nav.ejs') %>
         <div class="container mt-3">
-            <h1>ball game</h1>
+            <h1>click game</h1>
             <div>
                 <div class="mt-2">
                     <button class="btn btn-outline-secondary btn-sm">ID</button>
@@ -23,22 +23,23 @@
                     </button>
                 </div>
                 <div class="input-group mt-2">
-                    <button id="btnCreate" type="button" class="btn btn-danger mr-1">new
-                        game</button>
-                    <button id="btnJoin" type="button" class="btn btn-danger mr-1">join
+                    <button id="btnCreate" type="button" class="btn btn-danger mr-1">create
                         game</button>
                     <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled="disabled">ready</button>
-                    <input id="txtGameId" type="text" class="form-control" placeholder="Game ID please">
+                    <input id="txtGameId" type="text" class="form-control mr-1" placeholder="Game ID please">
+                    <button id="btnJoin" type="button" class="btn btn-danger">join
+                        game</button>
                 </div>
             </div>
+            <div id="divGameBang" class="mt-2"></div>
+            <div id="divPlayers"></div>
+            <div id="divBoard"></div>
         </div>
-        <div id="divPlayers"></div>
-        <div id="divBoard"></div>
         </div>
         <script>
             //not good idea open websocket as soon as website is showed
             //websocket has been opend in port 9090
-            let ws = new WebSocket("ws://localhost:9090");
+            let ws = new WebSocket("ws://10.6.1.1:9090");
 
 
             const btnCreate = document.getElementById("btnCreate");
@@ -48,13 +49,17 @@
             const divBoard = document.getElementById("divBoard");
             const userId = document.getElementById("userId");
             const btnReady = document.getElementById("btnReady");
+            const divGameBang = document.getElementById("divGameBang");
+            const bangIdBtn = document.getElementById("bangId");
 
-            console.log(userId.value)
+
 
             let clientId = null;
             let playerColor = null;
             let gameId = null;
             let ready = false;
+            let bangId = 0;
+            let gameEntity = null;
 
             //very first connection
             ws.onopen = function () {
@@ -63,11 +68,13 @@
                     method: "connect",
                     clientId: clientId
                 };
+                console.log("onopen : " + clientId);
                 ws.send(JSON.stringify(payLoad));
             };
 
-            //new game
+            //create game
             btnCreate.addEventListener("click", (e) => {
+                console.log("create btn : " + clientId);
                 const payLoad = {
                     method: "create",
                     clientId: clientId,
@@ -78,7 +85,7 @@
             //join
             btnJoin.addEventListener("click", (e) => {
                 if (gameId === null) gameId = txtGameId.value;
-                console.log("join game : " + gameId);
+                console.log("join game : " + gameId + " client id " + clientId);
                 const payLoad = {
                     method: "join",
                     clientId: clientId,
@@ -101,6 +108,7 @@
                 ws.send(JSON.stringify(payLoad));
             });
 
+
             //receive a message from server
             ws.onmessage = (message) => {
                 //message.data, the data sever has been sent
@@ -109,7 +117,27 @@
                 //create
                 if (response.method === "create") {
                     gameId = response.game.id;
-                    console.log(response.game.id);
+                    clientId = response.clientId;
+                    gameEntity = response.game;
+                    const b = document.createElement("button");
+
+
+                    //while (divGameBang.firstChild)
+                    //divGameBang.removeChild(divGameBang.firstChild);
+                    console.log(gameEntity);
+                    b.textContent = clientId + "가 만든 게임, Game ID : " + gameEntity.id;
+                    b.className = "btn btn-danger mt-1 mr-1";
+                    b.id = gameEntity.id;
+                    b.type = "button"
+                    b.addEventListener("click", (e) => {
+                        const payLoad = {
+                            method: "join",
+                            clientId: clientId,
+                            game: gameEntity,
+                        };
+                        ws.send(JSON.stringify(payLoad));
+                    });
+                    divGameBang.appendChild(b);
                 }
 
                 //update
@@ -123,23 +151,52 @@
                     }
                 }
 
+                //updateBang
+                if (response.method === "makeBang") {
+                    var bangGameId = response.gameId;
+                    var bangClientId = response.clientId
+                    const b = document.createElement("button");
+
+                    // while (divGameBang.firstChild)
+                    //   divGameBang.removeChild(divGameBang.firstChild);
+
+                    if (bangGameId && bangClientId) {
+                        b.textContent = bangClientId + "가 만든 게임, Game ID : " + bangGameId;
+                        b.className = "btn btn-danger mt-1 mr-1";
+                        b.id = bangGameId;
+                        b.type = "button"
+                        b.addEventListener("click", (e) => {
+                            const payLoad = {
+                                method: "join",
+                                clientId: clientId,
+                                gameId: bangGameId
+                            };
+                            ws.send(JSON.stringify(payLoad));
+                        });
+                        divGameBang.appendChild(b);
+                    }
+
+                }
+
                 //join
                 if (response.method === "join") {
                     const game = response.game;
-
+                    console.log("joined game id : " + game.id);
                     while (divPlayers.firstChild)
                         divPlayers.removeChild(divPlayers.firstChild);
 
                     game.clients.forEach((c) => {
-                        const d = document.createElement("div");
-                        d.style.width = "200px";
+                        const d = document.createElement("span");
+                        console.log(c.color);
                         d.style.background = c.color;
+                        d.className = "btn btn-danger mt-1";
                         d.textContent = c.clientId;
                         divPlayers.appendChild(d);
-
+                        console.log("c id : " + c.clientId + ' clientId : ' + clientId);
                         if (c.clientId === clientId) {
                             playerColor = c.color;
                         }
+                        console.log(playerColor);
                     });
 
                     while (divBoard.firstChild) divBoard.removeChild(divBoard.firstChild);
@@ -149,15 +206,17 @@
                         const b = document.createElement("button");
                         b.id = "ball" + (i + 1);
                         b.tag = i + 1;
+                        b.className = "btn btn-outline-secondary mx-1 my-1";
                         b.textContent = i + 1;
                         b.style.width = "150px";
                         b.style.height = "150px";
                         b.addEventListener("click", (e) => {
+                            console.log(playerColor)
                             b.style.background = playerColor;
                             const payLoad = {
                                 method: "play",
                                 clientId: clientId,
-                                gameId: gameId,
+                                gameId: game.id,
                                 ballId: b.tag,
                                 color: playerColor,
                             };

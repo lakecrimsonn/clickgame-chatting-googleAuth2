@@ -257,15 +257,16 @@ router.get("/login2", (req, res, next) => {
 
 //로그아웃
 router.get("/logout", (req, res) => {
-  if (!req.session) {
+  if (!req.session.passport) {
     console.log("로그인하지 않음");
     res.redirect("/");
+  } else {
+    req.session.destroy((err) => {
+      if (err) throw err;
+      res.redirect("/");
+      console.log("세션 종료");
+    });
   }
-  req.session.destroy((err) => {
-    if (err) throw err;
-    res.redirect("/");
-    console.log("세션 종료");
-  });
 });
 
 module.exports = router;
