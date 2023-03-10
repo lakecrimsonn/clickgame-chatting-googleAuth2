@@ -154,7 +154,6 @@ httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 
 //hashmap
 const clients = {};
-const clientsWaiting = {};
 const games = {};
 const bangHistory = {};
 
@@ -200,10 +199,6 @@ wsServer2.on("request", (request) => {
           });
         }
       });
-      // if (Object.keys(bangHistory).length !== 0) {
-      //   console.log("hi history");
-
-      // }
     }
 
     //verify what message client sent
@@ -229,9 +224,7 @@ wsServer2.on("request", (request) => {
       //send response to a client
       const con = clients[clientId].connection;
       con.send(JSON.stringify(payLoad));
-
-      //create game bang
-      makeGameBang(clientId, gameId);
+      sendBangQuery(clientId, gameId);
     }
 
     if (result.method === "join") {
@@ -292,26 +285,17 @@ wsServer2.on("request", (request) => {
     if (result.method === "ready") {
       const clientId = result.clientId;
       const gameId = result.gameId;
+      const game = games[gameId];
+      var ready = result.ready;
 
-      console.log(clientId + " " + gameId);
-      console.log(games[gameId].clients[clientId]);
-      console.log(games[gameId].clients[clientId]);
-      console.log(games[gameId].clients);
-
-      games[gameId].clients.forEach((c) => {
-        console.log(clients[c.clientId]);
+      game.clients.forEach((c) => {
+        console.log("ready what is c ? " + JSON.stringify(c));
       });
+      console.log("clientId in ready func : " + clientId);
+      game.clients[clientId].ready = true;
+      console.log("game client in ready func : " + game.clients[clientId]);
     }
   });
-
-  //very first connection
-  //generate a new clientId from guid()
-  //const clientId = guid();
-
-  //can find specific client's connection
-  // clients[clientId] = {
-  //   connection: connection,
-  // };
 
   //the message to send called method:'connect'
   const payLoad = {
@@ -337,16 +321,16 @@ function updateGameState() {
   setTimeout(updateGameState, 500);
 }
 
-function makeGameBang(clientId, gameId) {
+function sendBangQuery(clientId, gameId) {
   if (!clientId || !gameId) {
     return;
   }
-  const payLoad = {
-    method: "makeBang",
-    gameId: gameId,
-    clientId: clientId,
-  };
-  clients[clientId].connection.send(JSON.stringify(payLoad));
+  // const payLoad = {
+  //   method: "makeBang",
+  //   gameId: gameId,
+  //   clientId: clientId,
+  // };
+  // clients[clientId].connection.send(JSON.stringify(payLoad));
 
   var gameInfo = [clientId, gameId];
   conn.query(

@@ -25,7 +25,7 @@
                 <div class="input-group mt-2">
                     <button id="btnCreate" type="button" class="btn btn-danger mr-1">create
                         game</button>
-                    <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled="disabled">ready</button>
+                    <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled>ready</button>
                     <input id="txtGameId" type="text" class="form-control mr-1" placeholder="Game ID please">
                     <button id="btnJoin" type="button" class="btn btn-danger">join
                         game</button>
@@ -51,8 +51,6 @@
             const btnReady = document.getElementById("btnReady");
             const divGameBang = document.getElementById("divGameBang");
             const bangIdBtn = document.getElementById("bangId");
-
-
 
             let clientId = null;
             let playerColor = null;
@@ -91,19 +89,18 @@
                     clientId: clientId,
                     gameId: gameId,
                 };
-                btnReady.disabled = false;
+                btnReady.removeAttribute("disabled");
                 ws.send(JSON.stringify(payLoad));
             });
 
             //ready
             btnReady.addEventListener("click", (e) => {
                 console.log("ready btn clicked");
-                ready = true;
                 const payLoad = {
                     method: "ready",
                     clientId: clientId,
                     gameId: gameId,
-                    ready: ready,
+                    ready: true,
                 };
                 ws.send(JSON.stringify(payLoad));
             });
@@ -124,6 +121,7 @@
 
                     //while (divGameBang.firstChild)
                     //divGameBang.removeChild(divGameBang.firstChild);
+
                     console.log(gameEntity);
                     b.textContent = clientId + "가 만든 게임, Game ID : " + gameEntity.id;
                     b.className = "btn btn-danger mt-1 mr-1";
@@ -133,8 +131,9 @@
                         const payLoad = {
                             method: "join",
                             clientId: clientId,
-                            game: gameEntity,
+                            gameId: gameId,
                         };
+                        btnReady.removeAttribute("disabled");
                         ws.send(JSON.stringify(payLoad));
                     });
                     divGameBang.appendChild(b);
@@ -151,7 +150,7 @@
                     }
                 }
 
-                //updateBang
+                //Broadcast Bang
                 if (response.method === "makeBang") {
                     var bangGameId = response.gameId;
                     var bangClientId = response.clientId
@@ -159,6 +158,7 @@
 
                     // while (divGameBang.firstChild)
                     //   divGameBang.removeChild(divGameBang.firstChild);
+
 
                     if (bangGameId && bangClientId) {
                         b.textContent = bangClientId + "가 만든 게임, Game ID : " + bangGameId;
@@ -171,6 +171,7 @@
                                 clientId: clientId,
                                 gameId: bangGameId
                             };
+                            btnReady.removeAttribute("disabled");
                             ws.send(JSON.stringify(payLoad));
                         });
                         divGameBang.appendChild(b);
