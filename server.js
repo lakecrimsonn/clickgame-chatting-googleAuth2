@@ -156,7 +156,7 @@ httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 const clients = {};
 const games = {};
 const bangHistory = {};
-
+var cnt = 0;
 //websocket connection and send http server as JSON
 const wsServer2 = new websocketServer({
   httpServer: httpServer,
@@ -212,8 +212,10 @@ wsServer2.on("request", (request) => {
         id: gameId,
         balls: 20,
         clients: [],
-        allReady: false,
       };
+
+      console.log("sadlmf;lasmd : " + JSON.stringify(games[gameId]));
+      console.log("sadlmf;lasmd : " + JSON.stringify(games));
 
       const payLoad = {
         method: "create",
@@ -231,9 +233,7 @@ wsServer2.on("request", (request) => {
       const clientId = result.clientId;
       const gameId = result.gameId;
       const game = games[gameId];
-      console.log(game);
-      console.log("joined Game ID : " + game.id);
-      console.log("joined Client ID : " + clientId);
+
       if (game.clients.length >= 4) {
         //sorry max player reached
         console.log("sorry max player reached");
@@ -243,6 +243,7 @@ wsServer2.on("request", (request) => {
       const color = { 0: "Red", 1: "Green", 2: "Blue", 3: "Yellow" }[
         game.clients.length
       ];
+
       console.log("color : " + color);
       //all of the clients share same game id
       game.clients.push({
@@ -251,7 +252,7 @@ wsServer2.on("request", (request) => {
         ready: false,
       });
 
-      console.log("game.clients : " + JSON.stringify(game));
+      console.log("game.clients from join func : " + JSON.stringify(game));
 
       const payLoad = {
         method: "join",
@@ -264,7 +265,7 @@ wsServer2.on("request", (request) => {
       });
 
       //start the game
-      if (game.clients.length >= 2) {
+      if (game.clients.length >= 1) {
         updateGameState();
       }
     }
@@ -273,27 +274,85 @@ wsServer2.on("request", (request) => {
       const gameId = result.gameId;
       const ballId = result.ballId;
       const color = result.color;
-      console.log(color);
       let state = games[gameId].state;
       if (!state) state = {};
       state[ballId] = color;
       games[gameId].state = state;
-      console.log(state);
+
+      console.log(games[gameId]);
+
+      var pColor = Object.values(games[gameId].state);
+      var wBallsNum = parseInt(games[gameId].balls * 0.5);
+      var pCnt = {
+        rCnt: 0,
+        gCnt: 0,
+        bCnt: 0,
+        yCnt: 0,
+      };
+
+      pColor.forEach((c) => {
+        if (c === "Red") {
+          pCnt.rCnt += 1;
+        } else if (c === "Green") {
+          pCnt.gCnt += 1;
+        } else if (c === "Blue") {
+          pCnt.bCnt += 1;
+        } else if (c === "Yellow") {
+          pCnt.yCnt += 1;
+        }
+      });
+
+      let winner = null;
+
+      if (wBallsNum === pCnt.rCnt) {
+        console.log("Red win");
+        winner = "Red";
+        SendWinner(winner, gameId);
+      } else if (wBallsNum === pCnt.gCnt) {
+        console.log("Green win");
+        winner = "Green";
+        SendWinner(winner);
+      } else if (wBallsNum === pCnt.bCnt) {
+        console.log("Blue win");
+        winner = "Blue";
+        SendWinner(winner);
+      } else if (wBallsNum === pCnt.gCnt) {
+        console.log("Yellow win");
+        winner = "Yellow";
+        SendWinner(winner);
+      }
     }
 
     //ready
     if (result.method === "ready") {
-      const clientId = result.clientId;
+      const clientId = result.clientId; //a
       const gameId = result.gameId;
-      const game = games[gameId];
-      var ready = result.ready;
+      const game = games[gameId]; //object
 
-      game.clients.forEach((c) => {
-        console.log("ready what is c ? " + JSON.stringify(c));
-      });
-      console.log("clientId in ready func : " + clientId);
-      game.clients[clientId].ready = true;
-      console.log("game client in ready func : " + game.clients[clientId]);
+      for (var i = 0; i < game.clients.length; i++) {
+        if (game.clients[i].clientId === clientId) {
+          game.clients[i].ready = true;
+          console.log("game.clients[" + i + "] : " + game.clients[i].ready);
+          cnt += 1;
+        }
+      }
+
+      console.log("cnt : " + cnt + ", length : " + game.clients.length);
+
+      if (game.clients.length >= 1 && cnt === game.clients.length) {
+        const payLoad = {
+          method: "start",
+        };
+
+        game.clients.forEach((c) => {
+          clients[c.clientId].connection.send(JSON.stringify(payLoad));
+        });
+      }
+    }
+
+    if (result.method === "restart") {
+      cnt = 0;
+      console.log("cnt : " + cnt);
     }
   });
 
@@ -306,10 +365,25 @@ wsServer2.on("request", (request) => {
   //respond to client with JSON changed to string
   connection.send(JSON.stringify(payLoad));
 });
+
+//winner Send
+function SendWinner(winner, gameId) {
+  var gameId = gameId;
+  var payLoad = {
+    method: "win",
+    winner: winner,
+  };
+  games[gameId].clients.forEach((c) => {
+    clients[c.clientId].connection.send(JSON.stringify(payLoad));
+  });
+}
+
+//ball change
 function updateGameState() {
   for (const g of Object.keys(games)) {
     //g = game id
     const game = games[g];
+    //console.log(game);
     const payLoad = {
       method: "update",
       game: game,
