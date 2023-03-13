@@ -9,6 +9,7 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
         integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="http://localhost:8080/css/balls.css">
 </head>
 
 <body>
@@ -44,7 +45,7 @@
         <script>
             //not good idea open websocket as soon as website is showed
             //websocket has been opend in port 9090
-            let ws = new WebSocket("ws://10.6.1.1:9090");
+            let ws = new WebSocket("<%= wsUrl2 %>");
 
 
             const btnCreate = document.getElementById("btnCreate");

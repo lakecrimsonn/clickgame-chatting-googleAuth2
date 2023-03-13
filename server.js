@@ -11,6 +11,10 @@ app.use("/", require("./routes/controller.js"));
 app.use(express.static("public"));
 
 var conn = require("./lib/db")();
+
+wsUrl = process.env.WS_URL;
+wsUrl2 = process.env.WS_URL2;
+
 /**
  * 전역 변수
  */
@@ -40,6 +44,16 @@ const deleteSessions = () => {
  * WebSocket 서버
  */
 
+app.get("/grid", (req, res, next) => {
+  if (req.user) {
+    userInfo = req.user.name;
+  }
+  res.render("grid.ejs", {
+    user: userInfo,
+    wsUrl2: wsUrl2,
+  });
+});
+
 app.get("/chat", (req, res, next) => {
   if (!req.user) {
     console.log("로그인 하고 오렴");
@@ -52,6 +66,7 @@ app.get("/chat", (req, res, next) => {
   }
   res.render("chatting.ejs", {
     user: userInfo,
+    wsUrl: wsUrl,
   });
 });
 
@@ -67,6 +82,7 @@ app.get("/balls", (req, res, next) => {
   }
   res.render("balls.ejs", {
     user: userInfo,
+    wsUrl2: wsUrl2,
   });
 });
 
@@ -122,14 +138,13 @@ wsServer.on("request", (request) => {
 
 function sendToDB(objDB) {
   console.log(objDB);
-  conn.query(
-    "insert into project1.chatlog values(?,?,?,?);",
-    objDB,
-    function (err, rows) {
-      if (err) throw err;
-      if (rows[0]) console.log(rows[0]);
-    }
-  );
+  conn.query("insert into project1.chatlog values(?,?,?,?);", objDB, function (
+    err,
+    rows
+  ) {
+    if (err) throw err;
+    if (rows[0]) console.log(rows[0]);
+  });
 }
 
 /**
