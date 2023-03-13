@@ -26,6 +26,7 @@
                     <button id="btnCreate" type="button" class="btn btn-danger mr-1">create
                         game</button>
                     <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled="true">ready</button>
+                    <button id="btnExit" type="button" class="btn btn-danger">exit</button>
                     <input id="txtGameId" type="text" class="form-control mr-1" placeholder="Game ID please">
                     <button id="btnJoin" type="button" class="btn btn-danger">join
                         game</button>
@@ -56,7 +57,7 @@
             const divGameBang = document.getElementById("divGameBang");
             const gameStartDiv = document.getElementById("gameStartDiv");
             const gameText = document.getElementById("gameText");
-
+            const btnExit = document.getElementById("btnExit");
             //var childNodes = document.getElementById("container").getElementsByTagName('*');
 
             let clientId = null;
@@ -115,9 +116,29 @@
                 btnReady.disabled = true;
                 ws.send(JSON.stringify(payLoad));
 
-
-
             });
+
+            //exit
+            btnExit.addEventListener("click", (e) => {
+
+                const gameId = btnExit.id;
+
+                if (gameId === null) {
+                    alert("게임 참여하지 않음");
+                    return;
+                }
+
+                const payLoad = {
+                    method: "exit",
+                    gameId: gameId,
+                    clientId: clientId
+                }
+
+                console.log("exit 버튼 리스너에서 gameId : " + gameId);
+
+                ws.send(JSON.stringify(payLoad));
+
+            })
 
 
             //receive a message from server
@@ -154,15 +175,23 @@
 
                 //update
                 if (response.method === "update") {
-                    //{1: "red", 1}
                     var game = response.game;
-
                     if (!game.state) return;
+                    const buttons = [...divBoard.querySelectorAll('button')];
+
+                    //console.log(buttons);
+
                     for (const b of Object.keys(game.state)) {
-                        const color = game.state[b];
-                        const ballObject = document.getElementById("ball" + b);
+                        var color = game.state[b];
+                        var ballObject = document.getElementById("ball" + b);
                         ballObject.style.backgroundColor = color;
+                        var indexToRemove = buttons.indexOf(ballObject);
+                        buttons.splice(indexToRemove, 1);
                     }
+
+                    buttons.forEach((c) => {
+                        c.style.backgroundColor = "#ffffff";
+                    })
                 }
 
                 //Broadcast Bang
@@ -180,16 +209,17 @@
                         b.type = "button"
                         txtGameId.value = bangGameId;
                         b.addEventListener("click", (e) => {
+
                             const payLoad = {
                                 method: "join",
                                 clientId: clientId,
                                 gameId: bangGameId
                             };
+
                             btnReady.disabled = false;
                             ws.send(JSON.stringify(payLoad));
                         });
                         divGameBang.appendChild(b);
-
                     }
 
                 }
@@ -275,6 +305,18 @@
                     }
 
                     ws.send(JSON.stringify(payLoad));
+                }
+
+                //exit
+                if (response.method === "exit") {
+                    const game = response.game;
+
+                    btnExit.id = game.id;
+                    console.log("exit버튼에 게임아이디 할당 : " + btnExit.id);
+                }
+
+                if (response.method === "exit2") {
+                    divBoard.style = "pointer-events: none";
                 }
             };
         </script>

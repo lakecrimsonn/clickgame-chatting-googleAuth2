@@ -234,17 +234,30 @@ wsServer2.on("request", (request) => {
       const gameId = result.gameId;
       const game = games[gameId];
 
+      //중복 접속 체크
+      games[gameId].clients.forEach((c) => {
+        if (c.clientId === clientId) {
+          console.log(c.clientId + "는 이미 접속 중");
+          games[gameId].clients = games[gameId].clients.filter(
+            (c) => c.clientId !== clientId
+          );
+          console.log(c);
+          return;
+        }
+      });
+
+      //클라이언트 최대수 체크
       if (game.clients.length >= 4) {
         //sorry max player reached
         console.log("sorry max player reached");
         return;
       }
+
       //stores value that matches with [game.clients.length]
       const color = { 0: "Red", 1: "Green", 2: "Blue", 3: "Yellow" }[
         game.clients.length
       ];
 
-      console.log("color : " + color);
       //all of the clients share same game id
       game.clients.push({
         clientId: clientId,
@@ -264,6 +277,15 @@ wsServer2.on("request", (request) => {
         clients[c.clientId].connection.send(JSON.stringify(payLoad));
       });
 
+      const payLoad2 = {
+        method: "exit",
+        game: game,
+      };
+
+      game.clients.forEach((c) => {
+        clients[c.clientId].connection.send(JSON.stringify(payLoad2));
+      });
+
       //start the game
       if (game.clients.length >= 1) {
         updateGameState();
@@ -274,6 +296,21 @@ wsServer2.on("request", (request) => {
       const gameId = result.gameId;
       const ballId = result.ballId;
       const color = result.color;
+      const clientId = result.clientId;
+
+      console.log(games[gameId]);
+      games[gameId].clients.forEach((e) => {
+        if (e === null) {
+          console.log("클라이언트가 없음");
+          return false;
+        }
+
+        if (e.clientId !== clientId) {
+          console.log("클라이언트 아이디가 같지 않음");
+          return false;
+        }
+      });
+
       let state = games[gameId].state;
       if (!state) state = {};
       state[ballId] = color;
@@ -354,16 +391,34 @@ wsServer2.on("request", (request) => {
       cnt = 0;
       console.log("cnt : " + cnt);
     }
+
+    if (result.method === "exit") {
+      const gameId = result.gameId;
+      const clientId = result.clientId;
+      console.log(games[gameId]);
+      console.log("exit 버튼을 클릭한 클라이언트 : " + clientId);
+
+      games[gameId].clients = games[gameId].clients.filter(
+        (client) => client.clientId !== clientId
+      );
+
+      const payLoad = {
+        method: "exit2",
+      };
+      clients[clientId].connection.send(JSON.stringify(payLoad));
+
+      console.log(games[gameId]);
+    }
   });
 
-  //the message to send called method:'connect'
-  const payLoad = {
-    method: "connect",
-    //clientId: clientId,
-  };
+  // //the message to send called method:'connect'
+  // const payLoad = {
+  //   method: "connect",
+  //   //clientId: clientId,
+  // };
 
-  //respond to client with JSON changed to string
-  connection.send(JSON.stringify(payLoad));
+  // //respond to client with JSON changed to string
+  // connection.send(JSON.stringify(payLoad));
 });
 
 //winner Send
@@ -388,9 +443,12 @@ function updateGameState() {
       method: "update",
       game: game,
     };
+
     game.clients.forEach((c) => {
       clients[c.clientId].connection.send(JSON.stringify(payLoad));
     });
+
+    //console.log(JSON.stringify(games));
   }
   setTimeout(updateGameState, 500);
 }
@@ -426,6 +484,8 @@ function sendBangQuery(clientId, gameId) {
   };
   console.log("makeBang : " + JSON.stringify(bangHistory[clientId]));
 }
+
+function chkAlreadyIn(clientId) {}
 
 //guid generator
 
