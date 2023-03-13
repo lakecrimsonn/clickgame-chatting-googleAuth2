@@ -1,4 +1,5 @@
 const express = require("express");
+const { copyFileSync } = require("fs");
 const app = express();
 const WebSocketServer = require("websocket").server;
 const http = require("http");
@@ -156,7 +157,7 @@ httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 const clients = {};
 const games = {};
 const bangHistory = {};
-var cnt = 0;
+//var cnt = 0;
 //websocket connection and send http server as JSON
 const wsServer2 = new websocketServer({
   httpServer: httpServer,
@@ -185,28 +186,13 @@ wsServer2.on("request", (request) => {
         connection: connection,
       };
 
-      conn.query("select * from project1.banghistory", (err, rows) => {
-        console.log("DB connect : " + JSON.stringify(rows));
-        if (rows) {
-          rows.forEach((e) => {
-            console.log("forEach : " + JSON.stringify(e));
-            const payLoad = {
-              method: "makeBang",
-              clientId: e.clientid,
-              gameId: e.gameid,
-            };
-            clients[clientId].connection.send(JSON.stringify(payLoad));
-          });
-        }
-      });
+      queryDB(clientId);
     }
 
-    //verify what message client sent
     if (result.method === "create") {
-      //who is a client?
       const clientId = result.clientId;
-      console.log("create user id : " + clientId);
-      //a game client want to do
+      console.log(clientId + " 유저가 새로운 게임방을 서버에 신청합니다.");
+
       const gameId = guid();
       games[gameId] = {
         id: gameId,
@@ -214,8 +200,15 @@ wsServer2.on("request", (request) => {
         clients: [],
       };
 
-      console.log("sadlmf;lasmd : " + JSON.stringify(games[gameId]));
-      console.log("sadlmf;lasmd : " + JSON.stringify(games));
+      var color = "white";
+
+      games[gameId].clients.push({
+        clientId: clientId,
+        color: color,
+        ready: false,
+      });
+
+      sendBangQuery(clientId, gameId);
 
       const payLoad = {
         method: "create",
@@ -223,10 +216,20 @@ wsServer2.on("request", (request) => {
         clientId: clientId,
       };
 
-      //send response to a client
-      const con = clients[clientId].connection;
-      con.send(JSON.stringify(payLoad));
-      sendBangQuery(clientId, gameId);
+      clients[clientId].connection.send(JSON.stringify(payLoad));
+
+      // const payLoad = {
+      //   method: "create",
+      //   game: games[gameId],
+      //   clientId: clientId,
+      // };
+
+      // const payLoad = {
+      //   method: "makeBang",
+      //   bangArray: games[gameId],
+      // };
+
+      // const con = clients[clientId].connection;
     }
 
     if (result.method === "join") {
@@ -234,14 +237,16 @@ wsServer2.on("request", (request) => {
       const gameId = result.gameId;
       const game = games[gameId];
 
+      console.log(games[gameId]);
+      console.log(clientId);
       //중복 접속 체크
       games[gameId].clients.forEach((c) => {
+        console.log("중복에서 : " + JSON.stringify(c));
         if (c.clientId === clientId) {
           console.log(c.clientId + "는 이미 접속 중");
           games[gameId].clients = games[gameId].clients.filter(
             (c) => c.clientId !== clientId
           );
-          console.log(c);
           return;
         }
       });
@@ -287,7 +292,7 @@ wsServer2.on("request", (request) => {
       });
 
       //start the game
-      if (game.clients.length >= 1) {
+      if (game.clients.length >= 2) {
         updateGameState();
       }
     }
@@ -365,11 +370,15 @@ wsServer2.on("request", (request) => {
       const clientId = result.clientId; //a
       const gameId = result.gameId;
       const game = games[gameId]; //object
+      var cnt = 0;
 
       for (var i = 0; i < game.clients.length; i++) {
         if (game.clients[i].clientId === clientId) {
           game.clients[i].ready = true;
           console.log("game.clients[" + i + "] : " + game.clients[i].ready);
+        }
+
+        if (game.clients[i].ready === true) {
           cnt += 1;
         }
       }
@@ -398,6 +407,10 @@ wsServer2.on("request", (request) => {
       console.log(games[gameId]);
       console.log("exit 버튼을 클릭한 클라이언트 : " + clientId);
 
+      if (!games[gameId]) {
+        return;
+      }
+
       games[gameId].clients = games[gameId].clients.filter(
         (client) => client.clientId !== clientId
       );
@@ -405,20 +418,12 @@ wsServer2.on("request", (request) => {
       const payLoad = {
         method: "exit2",
       };
+
       clients[clientId].connection.send(JSON.stringify(payLoad));
 
       console.log(games[gameId]);
     }
   });
-
-  // //the message to send called method:'connect'
-  // const payLoad = {
-  //   method: "connect",
-  //   //clientId: clientId,
-  // };
-
-  // //respond to client with JSON changed to string
-  // connection.send(JSON.stringify(payLoad));
 });
 
 //winner Send
@@ -457,12 +462,6 @@ function sendBangQuery(clientId, gameId) {
   if (!clientId || !gameId) {
     return;
   }
-  // const payLoad = {
-  //   method: "makeBang",
-  //   gameId: gameId,
-  //   clientId: clientId,
-  // };
-  // clients[clientId].connection.send(JSON.stringify(payLoad));
 
   var gameInfo = [clientId, gameId];
   conn.query(
@@ -482,12 +481,23 @@ function sendBangQuery(clientId, gameId) {
     clientId: clientId,
     gameId: gameId,
   };
-  console.log("makeBang : " + JSON.stringify(bangHistory[clientId]));
+  console.log(
+    "sendBangQuery에서 DB 데이터 : " + JSON.stringify(bangHistory[clientId])
+  );
 }
 
-function chkAlreadyIn(clientId) {}
-
-//guid generator
+function queryDB(clientId) {
+  conn.query("select * from project1.banghistory", (err, rows) => {
+    console.log("방 히스토리 : " + JSON.stringify(rows));
+    if (rows) {
+      const payLoad = {
+        method: "makeBang",
+        bangArray: rows,
+      };
+      clients[clientId].connection.send(JSON.stringify(payLoad));
+    }
+  });
+}
 
 const guid = () => {
   function s4() {

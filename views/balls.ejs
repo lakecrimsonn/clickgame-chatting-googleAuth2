@@ -26,7 +26,7 @@
                     <button id="btnCreate" type="button" class="btn btn-danger mr-1">create
                         game</button>
                     <button id="btnReady" type="button" class="btn btn-danger mr-1" disabled="true">ready</button>
-                    <button id="btnExit" type="button" class="btn btn-danger">exit</button>
+                    <button id="btnExit" type="button" class="btn btn-danger mr-1">exit</button>
                     <input id="txtGameId" type="text" class="form-control mr-1" placeholder="Game ID please">
                     <button id="btnJoin" type="button" class="btn btn-danger">join
                         game</button>
@@ -58,16 +58,14 @@
             const gameStartDiv = document.getElementById("gameStartDiv");
             const gameText = document.getElementById("gameText");
             const btnExit = document.getElementById("btnExit");
-            //var childNodes = document.getElementById("container").getElementsByTagName('*');
 
-            let clientId = null;
             let playerColor = null;
             let gameId = null;
             let ready = false;
 
             //very first connection
             ws.onopen = function () {
-                clientId = userId.value
+                const clientId = userId.value
                 const payLoad = {
                     method: "connect",
                     clientId: clientId
@@ -76,14 +74,12 @@
                 ws.send(JSON.stringify(payLoad));
             };
 
-
-
             //create game
             btnCreate.addEventListener("click", (e) => {
-                console.log("create btn : " + clientId);
+                console.log(userId.value + " 유저가 새로운 게임방을 만듭니다.");
                 const payLoad = {
                     method: "create",
-                    clientId: clientId,
+                    clientId: userId.value,
                 };
                 ws.send(JSON.stringify(payLoad));
             });
@@ -105,11 +101,9 @@
             //ready
             btnReady.addEventListener("click", (e) => {
                 if (gameId === null) gameId = txtGameId.value;
-                console.log(gameId);
-                console.log("ready btn clicked");
                 const payLoad = {
                     method: "ready",
-                    clientId: clientId,
+                    clientId: userId.value,
                     gameId: gameId,
                     ready: true,
                 };
@@ -131,7 +125,7 @@
                 const payLoad = {
                     method: "exit",
                     gameId: gameId,
-                    clientId: clientId
+                    clientId: userId.value
                 }
 
                 console.log("exit 버튼 리스너에서 gameId : " + gameId);
@@ -148,79 +142,74 @@
 
                 //create
                 if (response.method === "create") {
-                    gameId = response.game.id;
-                    clientId = response.clientId;
-                    var gameEntity = response.game;
-                    const b = document.createElement("button");
-                    txtGameId.value = gameId;
+                    const game = response.game;
+                    console.log(game);
+                    const clientId = reponse.clientId;
+                    const gameId = game.id;
 
-                    //while (divGameBang.firstChild)
-                    //divGameBang.removeChild(divGameBang.firstChild);
+                    console.log("크리에이트에서 : " + clientId + " " + gameId);
 
-                    console.log(gameEntity);
-                    b.textContent = clientId + "가 만든 게임, Game ID : " + gameEntity.id;
-                    b.className = "btn btn-danger mt-1 mr-1";
-                    b.type = "button"
-                    b.addEventListener("click", (e) => {
+                    const btn = document.createElement("button");
+                    btn.textContent = clientId + "가 만든 게임, Game ID : " + gameId;
+                    btn.className = "btn btn-danger mt-1 mr-1";
+                    btn.type = "button"
+                    btn.id = gameId;
+                    btn.addEventListener("click", (e) => {
                         const payLoad = {
                             method: "join",
-                            clientId: clientId,
+                            clientId: userId.value,
                             gameId: gameId,
                         };
+                        txtGameId.value = btn.id;
                         btnReady.disabled = false;
                         ws.send(JSON.stringify(payLoad));
                     });
-                    divGameBang.appendChild(b);
+                    divGameBang.appendChild(btn);
                 }
 
                 //update
                 if (response.method === "update") {
                     var game = response.game;
-                    if (!game.state) return;
-                    const buttons = [...divBoard.querySelectorAll('button')];
-
-                    //console.log(buttons);
-
-                    for (const b of Object.keys(game.state)) {
-                        var color = game.state[b];
-                        var ballObject = document.getElementById("ball" + b);
-                        ballObject.style.backgroundColor = color;
-                        var indexToRemove = buttons.indexOf(ballObject);
-                        buttons.splice(indexToRemove, 1);
-                    }
-
-                    buttons.forEach((c) => {
-                        c.style.backgroundColor = "#ffffff";
-                    })
+                    checkUpdate(game);
                 }
 
                 //Broadcast Bang
                 if (response.method === "makeBang") {
-                    var bangGameId = response.gameId;
-                    var bangClientId = response.clientId
-                    const b = document.createElement("button");
 
-                    // while (divGameBang.firstChild)
-                    //   divGameBang.removeChild(divGameBang.firstChild);
+                    var bangArray = response.bangArray;
+                    if (!Array.isArray(bangArray)) {
+                        return;
+                    }
 
-                    if (bangGameId && bangClientId) {
-                        b.textContent = bangClientId + "가 만든 게임, Game ID : " + bangGameId;
-                        b.className = "btn btn-danger mt-1 mr-1";
-                        b.type = "button"
-                        txtGameId.value = bangGameId;
-                        b.addEventListener("click", (e) => {
+                    bangArray.forEach((e) => {
+
+                        if (!e) {
+                            return;
+                        }
+
+                        var gameId = e.gameid;
+                        var clientId = e.clientid
+                        var btn = document.createElement("button");
+                        btn.textContent = clientId + "가 만든 게임, Game ID : " + gameId;
+                        btn.className = "btn btn-danger mt-1 mr-1";
+                        btn.type = "button"
+                        btn.id = gameId
+
+                        btn.addEventListener("click", (c) => {
 
                             const payLoad = {
                                 method: "join",
-                                clientId: clientId,
-                                gameId: bangGameId
+                                clientId: userId.value,
+                                gameId: gameId
                             };
-
+                            txtGameId.value = btn.id;
                             btnReady.disabled = false;
                             ws.send(JSON.stringify(payLoad));
                         });
-                        divGameBang.appendChild(b);
-                    }
+
+                        divGameBang.appendChild(btn);
+                        console.log("리스너에서 : " + clientId + " " + gameId);
+                    })
 
                 }
 
@@ -234,16 +223,15 @@
                         divPlayers.removeChild(divPlayers.firstChild);
 
                     game.clients.forEach((c) => {
-                        console.log(c.color);
+
                         d.style.background = c.color;
                         d.className = "btn btn-danger mt-1 mr-1";
                         d.textContent = c.clientId;
                         d.id = game.id
                         divPlayers.appendChild(d);
-                        console.log("c id : " + c.clientId + ' clientId : ' + clientId);
-                        if (c.clientId === clientId) {
-                            playerColor = c.color;
-                        }
+
+                        playerColor = c.color;
+
                         console.log(playerColor);
                     });
 
@@ -253,7 +241,6 @@
                     console.log(game.id);
                     if (d.id === game.id) {
                         for (let i = 0; i < game.balls; i++) {
-                            console.log("why not working");
                             const b = document.createElement("button");
                             b.id = "ball" + (i + 1);
                             b.tag = i + 1;
@@ -261,6 +248,7 @@
                             b.textContent = i + 1;
                             b.style.width = "150px";
                             b.style.height = "150px";
+                            b.style.backgroundColor = "#ffffff";
                             b.addEventListener("click", (e) => {
                                 console.log(playerColor)
                                 b.style.background = playerColor;
@@ -274,8 +262,17 @@
                                 ws.send(JSON.stringify(payLoad));
                             });
                             divBoard.appendChild(b);
+                            divBoard.style = "pointer-events: none";
                         }
                     }
+
+                    btnCreate.disabled = true;
+                    btnJoin.disabled = true;
+                    const btnBang = divGameBang.querySelectorAll("button");
+                    btnBang.forEach(btn => {
+                        btn.disabled = true;
+                    });
+                    btnBang.getdisabled = true;
 
 
                 }
@@ -285,11 +282,8 @@
                     divBoard.style = "pointer-events: auto";
                     gameText.style.visibility = "visible";
 
-                    const payLoad = {
-
-                    }
+                    const payLoad = {}
                     ws.send
-
                 }
 
                 //win
@@ -307,7 +301,7 @@
                     ws.send(JSON.stringify(payLoad));
                 }
 
-                //exit
+                //join 할 때 exit에 게임아이디 할당
                 if (response.method === "exit") {
                     const game = response.game;
 
@@ -315,8 +309,32 @@
                     console.log("exit버튼에 게임아이디 할당 : " + btnExit.id);
                 }
 
+                //exit 버튼을 누른 후 서버 리스폰을 받아옴
                 if (response.method === "exit2") {
-                    divBoard.style = "pointer-events: none";
+                    //divBoard.style = "pointer-events: none";
+                    location.reload();
+                }
+
+                function checkUpdate(game) {
+                    if (!game.state) return;
+
+                    const buttons = [...divBoard.querySelectorAll('button')];
+
+                    if (buttons === null) {
+                        return;
+                    }
+
+                    for (const b of Object.keys(game.state)) {
+                        var color = game.state[b];
+                        var ballObject = document.getElementById("ball" + b);
+                        ballObject.style.backgroundColor = color;
+                        var indexToRemove = buttons.indexOf(ballObject);
+                        buttons.splice(indexToRemove, 1);
+                    }
+
+                    buttons.forEach((c) => {
+                        c.style.backgroundColor = "#ffffff";
+                    })
                 }
             };
         </script>
@@ -330,6 +348,25 @@
                 return;
             }
         }, 1000); -->
+        <!-- btnBang.textContent = bangClientId + "가 만든 게임, Game ID : " + bangGameId;
+                        btnBang.className = "btn btn-danger mt-1 mr-1";
+                        btnBang.type = "button"
+
+                        btnBang.addEventListener("click", (e) => {
+
+                            const payLoad = {
+                                method: "join",
+                                clientId: clientId,
+                                gameId: bangGameId
+                            };
+
+                            btnReady.disabled = false;
+                            ws.send(JSON.stringify(payLoad));
+                        });
+
+                        divGameBang.appendChild(btnBang);
+                        console.log("리스너에서 : " + bangGameId + " " + bangClientId); -->
+
 </body>
 
 </html>
