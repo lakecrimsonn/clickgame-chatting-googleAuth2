@@ -144,13 +144,13 @@
                 if (response.method === "create") {
                     const game = response.game;
                     console.log(game);
-                    const clientId = reponse.clientId;
+                    const bangJang = response.clientId;
                     const gameId = game.id;
 
-                    console.log("크리에이트에서 : " + clientId + " " + gameId);
+                    console.log("크리에이트에서 : " + bangJang + " " + gameId);
 
                     const btn = document.createElement("button");
-                    btn.textContent = clientId + "가 만든 게임, Game ID : " + gameId;
+                    btn.textContent = bangJang + "가 만든 게임, Game ID : " + gameId;
                     btn.className = "btn btn-danger mt-1 mr-1";
                     btn.type = "button"
                     btn.id = gameId;
@@ -188,9 +188,9 @@
                         }
 
                         var gameId = e.gameid;
-                        var clientId = e.clientid
+                        var bangJang = e.clientid
                         var btn = document.createElement("button");
-                        btn.textContent = clientId + "가 만든 게임, Game ID : " + gameId;
+                        btn.textContent = bangJang + "가 만든 게임, Game ID : " + gameId;
                         btn.className = "btn btn-danger mt-1 mr-1";
                         btn.type = "button"
                         btn.id = gameId
@@ -208,7 +208,7 @@
                         });
 
                         divGameBang.appendChild(btn);
-                        console.log("리스너에서 : " + clientId + " " + gameId);
+                        console.log("리스너에서 : " + bangJang + " " + gameId);
                     })
 
                 }
@@ -232,39 +232,37 @@
 
                         playerColor = c.color;
 
-                        console.log(playerColor);
+                        console.log(c.clientId + " " + playerColor);
                     });
 
                     while (divBoard.firstChild) divBoard.removeChild(divBoard.firstChild);
 
-                    console.log(d.id);
-                    console.log(game.id);
-                    if (d.id === game.id) {
-                        for (let i = 0; i < game.balls; i++) {
-                            const b = document.createElement("button");
-                            b.id = "ball" + (i + 1);
-                            b.tag = i + 1;
-                            b.className = "btn btn-outline-secondary mx-1 my-1";
-                            b.textContent = i + 1;
-                            b.style.width = "150px";
-                            b.style.height = "150px";
-                            b.style.backgroundColor = "#ffffff";
-                            b.addEventListener("click", (e) => {
-                                console.log(playerColor)
-                                b.style.background = playerColor;
-                                const payLoad = {
-                                    method: "play",
-                                    clientId: clientId,
-                                    gameId: game.id,
-                                    ballId: b.tag,
-                                    color: playerColor,
-                                };
-                                ws.send(JSON.stringify(payLoad));
-                            });
-                            divBoard.appendChild(b);
-                            divBoard.style = "pointer-events: none";
-                        }
+
+                    for (let i = 0; i < game.balls; i++) {
+                        const b = document.createElement("button");
+                        b.id = "ball" + (i + 1);
+                        b.tag = i + 1;
+                        b.className = "btn btn-outline-secondary mx-1 my-1";
+                        b.textContent = i + 1;
+                        b.style.width = "150px";
+                        b.style.height = "150px";
+                        b.style.backgroundColor = "#ffffff";
+                        b.addEventListener("click", (e) => {
+                            console.log(playerColor);
+                            b.style.background = playerColor;
+                            const payLoad = {
+                                method: "play",
+                                clientId: userId.value,
+                                gameId: game.id,
+                                ballId: b.tag,
+                                color: playerColor,
+                            };
+                            ws.send(JSON.stringify(payLoad));
+                        });
+                        divBoard.appendChild(b);
+                        divBoard.style = "pointer-events: none";
                     }
+
 
                     btnCreate.disabled = true;
                     btnJoin.disabled = true;

@@ -178,7 +178,7 @@ wsServer2.on("request", (request) => {
     //make string data to JSON
     const result = JSON.parse(message.utf8Data);
 
-    //set client ID
+    //첫연결
     if (result.method === "connect") {
       const clientId = result.clientId;
       console.log("client id : " + clientId);
@@ -189,9 +189,10 @@ wsServer2.on("request", (request) => {
       queryDB(clientId);
     }
 
+    //방개설
     if (result.method === "create") {
-      const clientId = result.clientId;
-      console.log(clientId + " 유저가 새로운 게임방을 서버에 신청합니다.");
+      const bangJang = result.clientId;
+      console.log(bangJang + " 방장이 새로운 게임방을 서버에 신청합니다.");
 
       const gameId = guid();
       games[gameId] = {
@@ -203,20 +204,20 @@ wsServer2.on("request", (request) => {
       var color = "white";
 
       games[gameId].clients.push({
-        clientId: clientId,
+        clientId: bangJang,
         color: color,
         ready: false,
       });
 
-      sendBangQuery(clientId, gameId);
+      sendBangQuery(bangJang, gameId);
 
       const payLoad = {
         method: "create",
         game: games[gameId],
-        clientId: clientId,
+        clientId: bangJang,
       };
 
-      clients[clientId].connection.send(JSON.stringify(payLoad));
+      clients[bangJang].connection.send(JSON.stringify(payLoad));
 
       // const payLoad = {
       //   method: "create",
@@ -307,11 +308,6 @@ wsServer2.on("request", (request) => {
       games[gameId].clients.forEach((e) => {
         if (e === null) {
           console.log("클라이언트가 없음");
-          return false;
-        }
-
-        if (e.clientId !== clientId) {
-          console.log("클라이언트 아이디가 같지 않음");
           return false;
         }
       });
@@ -428,7 +424,6 @@ wsServer2.on("request", (request) => {
 
 //winner Send
 function SendWinner(winner, gameId) {
-  var gameId = gameId;
   var payLoad = {
     method: "win",
     winner: winner,
