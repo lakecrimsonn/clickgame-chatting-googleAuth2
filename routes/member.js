@@ -24,7 +24,6 @@ router.use(
 //패스포트
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
-const GoogleStrategy = require("passport-google-oidc");
 var flash = require("connect-flash");
 
 router.use(passport.initialize());
@@ -53,34 +52,34 @@ passport.use(
             console.log("이미 있는 이름");
             return done(null, false, { message: "이름이 이미 있다우" });
           } else {
-            conn.query(
-              "select join_id from project1.number",
-              function (err, rows) {
-                if (err) throw err;
-                console.log(rows[0].join_id);
-                var join_id = rows[0].join_id + 1;
-                var params = [join_id, pw, passChk, name, date];
-                console.log("생성하는 회원 번호 : " + join_id);
-                console.log(params);
+            conn.query("select join_id from project1.number", function (
+              err,
+              rows
+            ) {
+              if (err) throw err;
+              console.log(rows[0].join_id);
+              var join_id = rows[0].join_id + 1;
+              var params = [join_id, pw, passChk, name, date];
+              console.log("생성하는 회원 번호 : " + join_id);
+              console.log(params);
 
-                conn.query(
-                  "insert into project1.member values(?,?,?,?,?);",
-                  params,
-                  function (err, rows) {
-                    if (err) throw err;
-                    if (rows[0]) console.log(rows[0]);
-                  }
-                );
+              conn.query(
+                "insert into project1.member values(?,?,?,?,?);",
+                params,
+                function (err, rows) {
+                  if (err) throw err;
+                  if (rows[0]) console.log(rows[0]);
+                }
+              );
 
-                conn.query(
-                  "update project1.number set join_id = (?)",
-                  join_id,
-                  function (err, rows) {
-                    if (err) throw err;
-                  }
-                );
-              }
-            );
+              conn.query(
+                "update project1.number set join_id = (?)",
+                join_id,
+                function (err, rows) {
+                  if (err) throw err;
+                }
+              );
+            });
           }
         }
       );

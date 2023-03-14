@@ -7,8 +7,8 @@ const { ucs2 } = require("punycode");
 const port = 8080;
 
 app.use(express.urlencoded({ extended: true }));
-app.use("/", require("./routes/member.js"));
 app.use("/", require("./routes/auth.js"));
+app.use("/", require("./routes/member.js"));
 app.use("/", require("./routes/controller.js"));
 app.use(express.static("public"));
 
@@ -140,14 +140,13 @@ wsServer.on("request", (request) => {
 
 function sendToDB(objDB) {
   console.log(objDB);
-  conn.query(
-    "insert into project1.chatlog values(?,?,?,?);",
-    objDB,
-    function (err, rows) {
-      if (err) throw err;
-      if (rows[0]) console.log(rows[0]);
-    }
-  );
+  conn.query("insert into project1.chatlog values(?,?,?,?);", objDB, function (
+    err,
+    rows
+  ) {
+    if (err) throw err;
+    if (rows[0]) console.log(rows[0]);
+  });
 }
 
 /**
