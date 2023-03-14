@@ -24,6 +24,7 @@ router.use(
 //패스포트
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
+const GoogleStrategy = require("passport-google-oidc");
 var flash = require("connect-flash");
 
 router.use(passport.initialize());
@@ -143,6 +144,9 @@ passport.deserializeUser(function (d_name, done) {
   );
 });
 
+//구글인증
+router.get("/login/federated/google", passport.authenticate("google"));
+
 //테스트 조회
 router.get("/send", function (req, res) {
   conn.query("SELECT * FROM test.test_table", function (err, rows) {
@@ -237,23 +241,23 @@ router.get("/login", (req, res, next) => {
 });
 
 //로그인2
-router.get("/login2", (req, res, next) => {
-  // if (req.user) {
-  //   console.log("이미 로그인함");
-  //   return res.send(
-  //     "<script>alert('이미 로그인했잖니');location.href='/';</script>"
-  //   );
-  // }
-  var msg;
-  var errMsg = req.flash("error");
-  if (errMsg.length) {
-    msg = errMsg;
-  }
-  res.render("login2.ejs", {
-    title: "login2",
-    message: msg,
-  });
-});
+// router.get("/login2", (req, res, next) => {
+//   // if (req.user) {
+//   //   console.log("이미 로그인함");
+//   //   return res.send(
+//   //     "<script>alert('이미 로그인했잖니');location.href='/';</script>"
+//   //   );
+//   // }
+//   var msg;
+//   var errMsg = req.flash("error");
+//   if (errMsg.length) {
+//     msg = errMsg;
+//   }
+//   res.render("login2.ejs", {
+//     title: "login2",
+//     message: msg,
+//   });
+// });
 
 //로그아웃
 router.get("/logout", (req, res) => {

@@ -1,16 +1,18 @@
+const { response } = require("express");
 const express = require("express");
-const { copyFileSync } = require("fs");
 const app = express();
 const WebSocketServer = require("websocket").server;
 const http = require("http");
+const { ucs2 } = require("punycode");
 const port = 8080;
 
 app.use(express.urlencoded({ extended: true }));
 app.use("/", require("./routes/member.js"));
+app.use("/", require("./routes/auth.js"));
 app.use("/", require("./routes/controller.js"));
 app.use(express.static("public"));
 
-var conn = require("./lib/db")();
+const conn = require("./lib/db")();
 
 wsUrl = process.env.WS_URL;
 wsUrl2 = process.env.WS_URL2;
@@ -138,13 +140,14 @@ wsServer.on("request", (request) => {
 
 function sendToDB(objDB) {
   console.log(objDB);
-  conn.query("insert into project1.chatlog values(?,?,?,?);", objDB, function (
-    err,
-    rows
-  ) {
-    if (err) throw err;
-    if (rows[0]) console.log(rows[0]);
-  });
+  conn.query(
+    "insert into project1.chatlog values(?,?,?,?);",
+    objDB,
+    function (err, rows) {
+      if (err) throw err;
+      if (rows[0]) console.log(rows[0]);
+    }
+  );
 }
 
 /**
@@ -172,6 +175,7 @@ httpServer.listen(9090, () => console.log("ws port listen : 9090"));
 const clients = {};
 const games = {};
 const bangHistory = {};
+
 //var cnt = 0;
 //websocket connection and send http server as JSON
 const wsServer2 = new websocketServer({
@@ -202,6 +206,7 @@ wsServer2.on("request", (request) => {
       };
 
       queryDB(clientId);
+      rankUpdate(clientId);
     }
 
     //방개설
@@ -291,6 +296,7 @@ wsServer2.on("request", (request) => {
       const payLoad = {
         method: "join",
         game: game,
+        clientId: clientId,
       };
 
       //loop through all clients and tell them that people has joined
@@ -360,45 +366,45 @@ wsServer2.on("request", (request) => {
       if (wBallsNum === pCnt.rCnt) {
         console.log("Red win");
         winner = "Red";
-        SendWinner(winner, gameId);
+        SendWinner(winner, clientId, gameId);
       } else if (wBallsNum === pCnt.gCnt) {
         console.log("Green win");
         winner = "Green";
-        SendWinner(winner);
+        SendWinner(winner, clientId, gameId);
       } else if (wBallsNum === pCnt.bCnt) {
         console.log("Blue win");
         winner = "Blue";
-        SendWinner(winner);
+        SendWinner(winner, clientId, gameId);
       } else if (wBallsNum === pCnt.gCnt) {
         console.log("Yellow win");
         winner = "Yellow";
-        SendWinner(winner);
+        SendWinner(winner, clientId, gameId);
       }
     }
 
     //ready
-    if (result.method === "ready") {
+    if (result.method === "start") {
       const clientId = result.clientId; //a
       const gameId = result.gameId;
       const game = games[gameId]; //object
-      var cnt = 0;
+      // var cnt = 0;
 
-      for (var i = 0; i < game.clients.length; i++) {
-        if (game.clients[i].clientId === clientId) {
-          game.clients[i].ready = true;
-          console.log("game.clients[" + i + "] : " + game.clients[i].ready);
-        }
+      // for (var i = 0; i < game.clients.length; i++) {
+      //   if (game.clients[i].clientId === clientId) {
+      //     game.clients[i].ready = true;
+      //     console.log("game.clients[" + i + "] : " + game.clients[i].ready);
+      //   }
 
-        if (game.clients[i].ready === true) {
-          cnt += 1;
-        }
-      }
+      //   if (game.clients[i].ready === true) {
+      //     cnt += 1;
+      //   }
+      // }
 
-      console.log("cnt : " + cnt + ", length : " + game.clients.length);
+      //console.log("cnt : " + cnt + ", length : " + game.clients.length);
 
-      if (game.clients.length >= 1 && cnt === game.clients.length) {
+      if (game.clients.length >= 1) {
         const payLoad = {
-          method: "start",
+          method: "start2",
         };
 
         game.clients.forEach((c) => {
@@ -408,14 +414,14 @@ wsServer2.on("request", (request) => {
     }
 
     if (result.method === "restart") {
-      cnt = 0;
-      console.log("cnt : " + cnt);
+      //cnt = 0;
+      //console.log("cnt : " + cnt);
     }
 
     if (result.method === "exit") {
       const gameId = result.gameId;
       const clientId = result.clientId;
-      console.log(games[gameId]);
+
       console.log("exit 버튼을 클릭한 클라이언트 : " + clientId);
 
       if (!games[gameId]) {
@@ -426,25 +432,110 @@ wsServer2.on("request", (request) => {
         (client) => client.clientId !== clientId
       );
 
+      var noOne = false;
+
+      if (games[gameId].clients.length === 0) {
+        noOne = true;
+      }
+
       const payLoad = {
         method: "exit2",
+        noOne: noOne,
+        gameId: gameId,
       };
 
       clients[clientId].connection.send(JSON.stringify(payLoad));
 
       console.log(games[gameId]);
     }
+
+    if (result.method === "removeBang") {
+      const gameId = result.gameId;
+      console.log(gameId);
+      conn.query(
+        "delete from project1.banghistory where gameid = (?)",
+        gameId,
+        (err, result) => {
+          if (err) {
+            console.error(err);
+          }
+        }
+      );
+    }
   });
 });
 
 //winner Send
-function SendWinner(winner, gameId) {
-  var payLoad = {
+function SendWinner(winner, clientId, gameId) {
+  var win = 0;
+  var gameInfo = [clientId, win];
+
+  conn.query(
+    "select win from project1.rank where clientid = (?)",
+    clientId,
+    (err, rows) => {
+      if (err) {
+        console.error(err);
+      }
+
+      if (rows.length === 0) {
+        console.log("새로운 랭커 " + clientId + "를 추가합니다.");
+        gameInfo[1] = 1;
+        conn.query(
+          "insert into project1.rank values (?,?)",
+          gameInfo,
+          (err, result) => {
+            if (err) {
+              console.error(err);
+            }
+          }
+        );
+      } else {
+        var win = rows[0].win;
+        win += 1;
+        gameInfo[1] = win;
+        console.log(gameInfo + "의 랭크 데이터를 업그레이드합니다.");
+        gameInfo.reverse();
+        conn.query(
+          "update project1.rank set win = (?) where clientid = (?)",
+          gameInfo,
+          (err, rows) => {
+            if (err) {
+              console.error(err);
+            }
+          }
+        );
+      }
+    }
+  );
+
+  console.log("표기할 랭크 정보 : " + gameInfo);
+
+  const payLoad = {
     method: "win",
     winner: winner,
   };
+
   games[gameId].clients.forEach((c) => {
     clients[c.clientId].connection.send(JSON.stringify(payLoad));
+  });
+}
+
+//rank update
+function rankUpdate(clientId) {
+  conn.query("select * from project1.rank", (err, rows) => {
+    if (err) {
+      console.error(err);
+    }
+
+    rows.sort((a, b) => b.win - a.win);
+
+    console.log(rows);
+    const payLoad = {
+      method: "updateRank",
+      rank: rows,
+    };
+    clients[clientId].connection.send(JSON.stringify(payLoad));
   });
 }
 
@@ -483,6 +574,7 @@ function sendBangQuery(clientId, gameId) {
       }
     }
   );
+
   conn.query("select * from project1.banghistory", (err, rows) => {
     console.log("db에서 온 데이터 : " + JSON.stringify(rows));
   });
