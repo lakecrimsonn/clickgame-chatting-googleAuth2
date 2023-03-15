@@ -96,7 +96,7 @@ passport.use(
                 if (!row) {
                   return cb(null, false);
                 }
-                return cb(null, row[0]);
+                return cb(null, row[0]); //users
               }
             );
           }
@@ -122,6 +122,10 @@ passport.use(
 // });
 
 passport.serializeUser(function (user, cb) {
+  console.log(user);
+  console.log(user.id);
+  user.name = user.id;
+  console.log(user.name);
   process.nextTick(function () {
     cb(null, { id: user.id, username: user.username, name: user.name });
   });

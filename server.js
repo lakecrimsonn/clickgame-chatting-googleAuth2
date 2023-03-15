@@ -73,12 +73,12 @@ app.get("/chat", (req, res, next) => {
 });
 
 app.get("/balls", (req, res, next) => {
-  // if (!req.user) {
-  //   console.log("로그인 하고 오렴");
-  //   return res.send(
-  //     "<script>alert('로그인 하고 오렴');location.href='/';</script>"
-  //   );
-  // }
+  if (!req.user) {
+    console.log("로그인 하고 오렴");
+    return res.send(
+      "<script>alert('로그인 하고 오렴');location.href='/';</script>"
+    );
+  }
   if (req.user) {
     userInfo = req.user.name;
   }
@@ -140,13 +140,14 @@ wsServer.on("request", (request) => {
 
 function sendToDB(objDB) {
   console.log(objDB);
-  conn.query("insert into project1.chatlog values(?,?,?,?);", objDB, function (
-    err,
-    rows
-  ) {
-    if (err) throw err;
-    if (rows[0]) console.log(rows[0]);
-  });
+  conn.query(
+    "insert into project1.chatlog values(?,?,?,?);",
+    objDB,
+    function (err, rows) {
+      if (err) throw err;
+      if (rows[0]) console.log(rows[0]);
+    }
+  );
 }
 
 /**
