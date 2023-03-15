@@ -7,16 +7,6 @@ var session = require("express-session");
 var MySQLStore = require("express-mysql-session")(session);
 var flash = require("connect-flash");
 
-/**
- * federated_credentials
-user_id
-provider
-subject
-
-users
-id
- */
-
 var options = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -27,7 +17,7 @@ var options = {
 
 router.use(
   session({
-    secret: "secret2",
+    secret: "secret",
     resave: false,
     saveUninitialized: false,
     store: new MySQLStore(options),
@@ -47,7 +37,7 @@ passport.use(
       callbackURL: process.env.GOOGLE_REDIRECT_URL,
       scope: ["profile"],
     },
-    function verify(issuer, profile, cb) {
+    function verify(issuer, profile, done) {
       console.log(issuer);
       console.log(profile);
       conn.query(
@@ -55,7 +45,7 @@ passport.use(
         [issuer, profile.id],
         function (err, row) {
           if (err) {
-            return cb(err);
+            return done(err);
           }
           console.log(row);
           if (row.length === 0) {
@@ -64,7 +54,7 @@ passport.use(
               [profile.displayName],
               function (err) {
                 if (err) {
-                  return cb(err);
+                  return done(err);
                 }
 
                 var id = profile.displayName;
@@ -73,13 +63,13 @@ passport.use(
                   [id, issuer, profile.id],
                   function (err) {
                     if (err) {
-                      return cb(err);
+                      return done(err);
                     }
                     var user = {
                       id: id,
                       name: profile.displayName,
                     };
-                    return cb(null, user);
+                    return done(null, user);
                   }
                 );
               }
@@ -91,12 +81,12 @@ passport.use(
               [row[0].user_id],
               function (err, row) {
                 if (err) {
-                  return cb(err);
+                  return done(err);
                 }
                 if (!row) {
-                  return cb(null, false);
+                  return done(null, false);
                 }
-                return cb(null, row[0]); //users
+                return done(null, row[0]); //users
               }
             );
           }
@@ -106,37 +96,36 @@ passport.use(
   )
 );
 
-// passport.serializeUser(function (user, cb) {
+// passport.serializeUser(function (user, done) {
 //   console.log(user);
-//   cb(null, user.user_id); //디시리얼라이즈드의 d_id로 이어진다
+//   done(null, user.user_id); //디시리얼라이즈드의 d_id로 이어진다
 // });
 
-// passport.deserializeUser(function (user, cb) {
+// passport.deserializeUser(function (user, done) {
 //   conn.query(
 //     "select * from project1.users where id like (?)",
 //     d_name,
 //     function (err, rows) {
-//       cb(null, rows[0]);
+//       done(null, rows[0]);
 //     }
 //   );
 // });
 
-passport.serializeUser(function (user, cb) {
-  console.log(user);
-  console.log(user.id);
-  user.name = user.id;
-  console.log(user.name);
+passport.serializeUser(function (user, done) {
   process.nextTick(function () {
-    cb(null, { id: user.id, username: user.username, name: user.name });
+    done(null, user.id);
   });
 });
 
-passport.deserializeUser(function (user, cb) {
-  process.nextTick(function () {
-    return cb(null, user);
-  });
+passport.deserializeUser(function (user, done) {
+  return done(null, user);
 });
 
+// passport.deserializeUser(function(user, cb) {
+//   process.nextTick(function() {
+//     return cb(null, user);
+//   });
+// });
 // passport.serializeUser(function (user, done) {
 //   console.log("id: " + user.name + "의 세션이 만들어짐");
 //   done(null, user.name); //디시리얼라이즈드의 d_id로 이어진다

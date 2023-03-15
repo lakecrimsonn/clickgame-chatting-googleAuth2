@@ -3,7 +3,7 @@ const express = require("express");
 const app = express();
 const WebSocketServer = require("websocket").server;
 const http = require("http");
-const { ucs2 } = require("punycode");
+const { use } = require("passport");
 const port = 8080;
 
 app.use(express.urlencoded({ extended: true }));
@@ -14,19 +14,15 @@ app.use(express.static("public"));
 
 const conn = require("./lib/db")();
 
-wsUrl = process.env.WS_URL;
-wsUrl2 = process.env.WS_URL2;
-
-/**
- * 전역 변수
- */
 const colors = ["red", "green", "blue", "magenta", "purple", "plum", "orange"];
 const clients1 = [];
 let history = [];
-var userInfo;
-/**
- * HTTP 서버
- */
+let userInfo;
+
+const wsUrl = process.env.WS_URL;
+const wsUrl2 = process.env.WS_URL2;
+const srUrl = process.env.SERVER_URL;
+
 const server = http.createServer(app);
 
 server.listen(port, () => {
@@ -42,19 +38,6 @@ const deleteSessions = () => {
     }
   });
 };
-/**
- * WebSocket 서버
- */
-
-app.get("/grid", (req, res, next) => {
-  if (req.user) {
-    userInfo = req.user.name;
-  }
-  res.render("grid.ejs", {
-    user: userInfo,
-    wsUrl2: wsUrl2,
-  });
-});
 
 app.get("/chat", (req, res, next) => {
   if (!req.user) {
@@ -62,29 +45,32 @@ app.get("/chat", (req, res, next) => {
     return res.send(
       "<script>alert('로그인 하고 오렴');location.href='/';</script>"
     );
+  } else {
+    userInfo = req.user;
   }
-  if (req.user) {
-    userInfo = req.user.name;
-  }
+
   res.render("chatting.ejs", {
     user: userInfo,
     wsUrl: wsUrl,
+    srUrl: srUrl,
   });
 });
 
-app.get("/balls", (req, res, next) => {
+app.get("/clicking", (req, res, next) => {
   if (!req.user) {
     console.log("로그인 하고 오렴");
     return res.send(
       "<script>alert('로그인 하고 오렴');location.href='/';</script>"
     );
+  } else {
+    userInfo = req.user;
   }
-  if (req.user) {
-    userInfo = req.user.name;
-  }
-  res.render("balls.ejs", {
+
+  res.render("clicking.ejs", {
     user: userInfo,
+    wsUrl: wsUrl,
     wsUrl2: wsUrl2,
+    srUrl: srUrl,
   });
 });
 
@@ -150,9 +136,6 @@ function sendToDB(objDB) {
   );
 }
 
-/**
- * 유틸
- */
 const htmlEntities = (str) =>
   String(str)
     .replace(/&/g, "&amp;")
@@ -161,10 +144,7 @@ const htmlEntities = (str) =>
     .replace(/"/g, "&quot;");
 const makeResponse = (type, data) => JSON.stringify({ type, data });
 
-/**
- * balls
- */
-
+//click game
 const httpServer = http.createServer();
 const websocketServer = require("websocket").server;
 
@@ -468,7 +448,8 @@ wsServer2.on("request", (request) => {
 //winner Send
 function SendWinner(winner, clientId, gameId) {
   var win = 0;
-  var gameInfo = [clientId, win];
+  var date = new Date();
+  var gameInfo = [clientId, win, date];
 
   conn.query(
     "select win from project1.rank where clientid = (?)",
@@ -482,7 +463,7 @@ function SendWinner(winner, clientId, gameId) {
         console.log("새로운 랭커 " + clientId + "를 추가합니다.");
         gameInfo[1] = 1;
         conn.query(
-          "insert into project1.rank values (?,?)",
+          "insert into project1.rank values (?,?,?)",
           gameInfo,
           (err, result) => {
             if (err) {
@@ -493,12 +474,11 @@ function SendWinner(winner, clientId, gameId) {
       } else {
         var win = rows[0].win;
         win += 1;
-        gameInfo[1] = win;
         console.log(gameInfo + "의 랭크 데이터를 업그레이드합니다.");
-        gameInfo.reverse();
+        console.log(date);
         conn.query(
-          "update project1.rank set win = (?) where clientid = (?)",
-          gameInfo,
+          "update project1.rank set win = (?), date = (?) where clientid = (?)",
+          [win, date, clientId],
           (err, rows) => {
             if (err) {
               console.error(err);
@@ -529,8 +509,6 @@ function rankUpdate(clientId) {
     }
 
     rows.sort((a, b) => b.win - a.win);
-
-    console.log(rows);
     const payLoad = {
       method: "updateRank",
       rank: rows,

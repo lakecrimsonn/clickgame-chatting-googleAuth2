@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>click game</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+        integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="<%= srUrl %>/css/clicking.css">
+    <style>
+
+    </style>
+
+</head>
+
+<body>
+    <%- include('nav.ejs') %>
+        <div class="item0">
+
+            <div class="item1">
+                <h1 class="item1_1">click game</h1>
+                <div class="item1_2">
+                    <button class="btn btn-outline-secondary btn-sm">ID</button>
+                    <button id="userId" type="button" class="btn btn-outline-dark btn-sm" value="<%=user%>">
+                        <%=user%>
+                    </button>
+                </div>
+            </div>
+
+            <div class="item2">
+                <div class="input-group">
+                    <button id="btnCreate" type="button" class="btn btn-danger mr-1">create
+                        game</button>
+                    <button id="btnReady" type="button" class="btn btn-danger  mr-1" disabled="true">start</button>
+                    <button id="btnExit" type="button" class="btn btn-danger  mr-1">exit</button>
+                    <input id="txtGameId" type="text" class="form-control  mr-1" placeholder="Game ID please">
+                    <button id="btnJoin" type="button" class="btn btn-danger ">join
+                        game</button>
+                </div>
+                <div id="divGameBang" class=""></div>
+                <div id="divPlayers"></div>
+                <div id="gameStartDiv" class="">
+                    <h2 id="gameText" class="text-center" style="visibility:hidden">Game Started!</h2>
+                </div>
+                <div id="divBoard" style="pointer-events: none;"></div>
+            </div>
+
+            <div class="item3">
+
+                <div class="item4">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">아이디</th>
+                                <th scope="col">승리수</th>
+                                <th scope="col">날짜</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rankList">
+                        </tbody>
+                    </table>
+                </div>
+                <!-- <ul class="list-group">
+                    <li class="list-group-item active" aria-current="true">rank</li>
+                    <li id="rankList" class="list-group-item">
+                        <ul class="list-group list-group-horizontal">
+                            <li class="list-group-item">아이디</li>
+                            <li class="list-group-item">승리수</li>
+                        </ul>
+                    </li>
+                </ul> -->
+                <div id="ptag" value="<%= wsUrl2 %>">
+
+                    <div class="item5">
+                        <div class="chatdiv" id="content"></div>
+                        <div>
+                            <input class="chatbox" type="text" id="status" placeholder="<%= user %>"
+                                disabled="disabled" />
+                            <input class="chatbox" type="text" id="input" />
+                            <div id="ptag2" value="<%= wsUrl %>">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="item6"></div>
+                </div>
+
+            </div>
+
+
+
+            <script src="<%= srUrl %>/js/chatting.js"></script>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+
+            <!-- <input type="checkbox" id="check"> <label class="chat-btn" for="check"> <i
+                class="fa fa-commenting-o comment"></i> <i class="fa fa-close close"></i> </label>
+        <div class="wrapper">
+            <div class="header">
+                <h6>Let's Chat - Online</h6>
+            </div>
+            <div class="text-center p-2"> <span>Please fill out the form to start chat!</span> </div>
+            <div class="chat-form"> <input type="text" class="form-control" placeholder="Name">
+                <input type="text" class="form-control" placeholder="Email"> <textarea class="form-control"
+                    placeholder="Your Text Message"></textarea> <button
+                    class="btn btn-success btn-block">Submit</button>
+            </div>
+        </div> -->
+
+            <script src="<%= srUrl %>/js/clicking.js"></script>
+
+</body>
+
+</html>

@@ -14,7 +14,7 @@ var options = {
 
 router.use(
   session({
-    secret: "secret1",
+    secret: "secret",
     resave: false,
     saveUninitialized: false,
     store: new MySQLStore(options),
@@ -44,7 +44,7 @@ passport.use(
       var date = new Date();
 
       conn.query(
-        "select * from project1.member where name like ?",
+        "select * from project1.members where id like ?",
         name,
         function (err, rows) {
           if (err) return done(err);
@@ -58,12 +58,12 @@ passport.use(
                 if (err) throw err;
                 console.log(rows[0].join_id);
                 var join_id = rows[0].join_id + 1;
-                var params = [join_id, pw, passChk, name, date];
+                var params = [name, pw, passChk, join_id, date];
                 console.log("생성하는 회원 번호 : " + join_id);
                 console.log(params);
 
                 conn.query(
-                  "insert into project1.member values(?,?,?,?,?);",
+                  "insert into project1.members values(?,?,?,?,?);",
                   params,
                   function (err, rows) {
                     if (err) throw err;
@@ -99,7 +99,7 @@ passport.use(
     },
     function (req, name, pw, done) {
       conn.query(
-        "select * from project1.member where name like (?)",
+        "select * from project1.members where id like (?)",
         name,
         function (err, rows) {
           if (err) return done(err);
@@ -127,21 +127,21 @@ passport.use(
 //아이디를 이용해서 세션을 쿠키에 저장시킨다
 //서버를 껐다가 키면 세션이 사라진다
 //user는 done(null,result);에서 result다
-passport.serializeUser(function (user, done) {
-  console.log("id: " + user.name + "의 세션이 만들어짐");
-  done(null, user.name); //디시리얼라이즈드의 d_id로 이어진다
-});
+// passport.serializeUser(function (user, done) {
+//   console.log("id: " + user.name + "의 세션이 만들어짐");
+//   done(null, user.name); //디시리얼라이즈드의 d_id로 이어진다
+// });
 
-//세션 데이터를 가진 사람을 DB에서 찾을 때 사용
-passport.deserializeUser(function (d_name, done) {
-  conn.query(
-    "select * from project1.member where name like (?)",
-    d_name,
-    function (err, rows) {
-      done(null, rows[0]);
-    }
-  );
-});
+// //세션 데이터를 가진 사람을 DB에서 찾을 때 사용
+// passport.deserializeUser(function (d_name, done) {
+//   conn.query(
+//     "select * from project1.member where name like (?)",
+//     d_name,
+//     function (err, rows) {
+//       done(null, rows[0]);
+//     }
+//   );
+// });
 
 //테스트 조회
 router.get("/send", function (req, res) {

@@ -1,0 +1,65 @@
+body {
+}
+
+.item0 {
+  padding: 10px;
+  display: grid;
+  grid-gap: 10px;
+  grid-template-columns: 3fr 1fr;
+  grid-template-rows: 100px auto;
+  grid-template-areas: "a a " "b  c" "b c" "b c";
+}
+.item1 {
+  grid-area: a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.item2 {
+}
+
+.item3 {
+  grid-area: c;
+}
+.item4 {
+  grid-area: d;
+}
+.item5 {
+  grid-area: e;
+}
+.item6 {
+  grid-area: f;
+}
+
+.chatdiv {
+  width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#content {
+  padding: 5px;
+  border-radius: 5px;
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  margin-top: 10px;
+  height: 300px;
+}
+
+.chatbox {
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  margin-top: 10px;
+  padding: 5px;
+  width: 400px;
+}
+
+#status {
+  width: 88px;
+  display: block;
+  float: left;
+  text-align: end;
+  margin-right: 10px;
+}
