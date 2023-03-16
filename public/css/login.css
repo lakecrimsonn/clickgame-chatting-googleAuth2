@@ -1,3 +1,8 @@
+.card {
+  display: flex;
+  align-items: center;
+  width: 30vw;
+}
 .login-with-google-btn {
   transition: background-color 0.3s, box-shadow 0.3s;
 

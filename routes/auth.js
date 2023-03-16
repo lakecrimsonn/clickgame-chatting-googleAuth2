@@ -150,7 +150,7 @@ router.get("/login/federated/google", passport.authenticate("google"));
 router.get(
   "/auth/google/callback",
   passport.authenticate("google", {
-    successRedirect: "/",
+    successRedirect: "/clicking",
     failureRedirect: "/login",
     failureFlash: true,
   })

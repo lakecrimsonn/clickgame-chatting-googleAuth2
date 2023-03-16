@@ -6,14 +6,13 @@ $(function () {
   var status = $("#status");
   var myColor = false;
   var myName = $("#status").text();
-  //var myName = $("#status").attr("placeholder"); // Get the value of the "value" attribute
 
   window.WebSocket = window.WebSocket || window.MozWebSocket;
 
   if (!window.WebSocket) {
     content.html(
       $("<p>", {
-        text: "Sorry, but your browser doesn't support WebSocket.",
+        text: "브라우저가 웹소켓을 지원하지 않습니다.",
       })
     );
     input.hide();
@@ -29,7 +28,12 @@ $(function () {
     input.removeAttr("disabled");
     content.html(
       $("<p>", {
-        text: "admin : 게임 끝나고 방 나갈때 exit 꼭 눌러주기",
+        text:
+          "admin : 1. 방장이 create game을 눌러서 게임방을 만든다." +
+          " 2. 방장이름의 버튼을 눌러 게임을 참여한다." +
+          "3. 방장이 게임을 시작한다." +
+          "4. 버튼 10개을 먼저 누른 사람이 승리" +
+          "5. 게임 끝나고 방 나갈때 exit 꼭 눌러주기",
       })
     );
   };
@@ -37,9 +41,7 @@ $(function () {
   connection.onerror = function (error) {
     content.html(
       $("<p>", {
-        text:
-          "Sorry, but there's some problem with your " +
-          "connection or the server is down.",
+        text: "에러가 생겼습니다.",
       })
     );
   };
@@ -95,9 +97,7 @@ $(function () {
   setInterval(function () {
     if (connection.readyState !== 1) {
       status.text("Error");
-      input
-        .attr("disabled", "disabled")
-        .val("Unable to communicate with the WebSocket server.");
+      input.attr("disabled", "disabled").val("웹소켓과 연결이 안됩니다.");
     }
   }, 3000);
 

@@ -3,7 +3,7 @@ var conn = require("../lib/db")();
 const session = require("express-session"); //세션 모듈 로드
 //var FileStore = require("session-file-store")(session);
 var MySQLStore = require("express-mysql-session")(session);
-
+const srUrl = process.env.SERVER_URL;
 var options = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -50,7 +50,7 @@ passport.use(
           if (err) return done(err);
           if (rows.length) {
             console.log("이미 있는 이름");
-            return done(null, false, { message: "이름이 이미 있다우" });
+            return done(null, false, { message: "이미 존재하는 이름입니다" });
           } else {
             conn.query(
               "select join_id from project1.number",
@@ -76,6 +76,16 @@ passport.use(
                   join_id,
                   function (err, rows) {
                     if (err) throw err;
+                  }
+                );
+
+                conn.query(
+                  "select * from project1.members where guid like (?)",
+                  join_id,
+                  function (err, rows) {
+                    if (err) throw err;
+                    console.log(rows[0]);
+                    return done(null, rows[0]);
                   }
                 );
               }
@@ -105,16 +115,18 @@ passport.use(
           if (err) return done(err);
           if (!rows[0]) {
             console.log("없는 아이디");
-            return done(null, false, { message: "존재하지않는 아이디요" });
+            return done(null, false, { message: "존재하지 않는 아이디입니다" });
           }
           //done(서버에러(db에러), 성공시 사용자 db데이터, 에러메세지)
           if (pw === rows[0].password) {
             return done(null, rows[0]);
           } else if (pw !== rows[0].password) {
             console.log("비밀번호 틀림" + pw + rows[0].password);
-            return done(null, false, { message: "비번 틀렸다능" });
+            return done(null, false, { message: "비밀번호가 틀렸습니다" });
           } else {
-            return done(null, false, { message: "? 입력 안할거임?" });
+            return done(null, false, {
+              message: "아이디와 비밀번호를 입력해주세요",
+            });
           }
         }
       );
@@ -158,10 +170,13 @@ router.get("/send", function (req, res) {
 router.post(
   "/addJoin",
   passport.authenticate("local-join", {
-    successRedirect: "/",
+    successRedirect: "/clicking",
     failureRedirect: "/join",
     failureFlash: true,
-  })
+  }),
+  (req, res) => {
+    res.redirect("clicking.ejs");
+  }
 );
 
 //회원가입 불러오기
@@ -174,6 +189,7 @@ router.get("/join", (req, res, next) => {
   res.render("join.ejs", {
     title: "join",
     message: msg,
+    srUrl: srUrl,
   });
 });
 
@@ -187,6 +203,7 @@ router.get("/", (req, res, next) => {
   res.render("index.ejs", {
     title: "index",
     message: msg,
+    srUrl: srUrl,
   });
 });
 
@@ -195,7 +212,7 @@ router.post(
   "/login",
   isLoggedIn,
   passport.authenticate("local-login", {
-    successRedirect: "/",
+    successRedirect: "/clicking",
     failureRedirect: "/login",
     failureFlash: true,
   })
@@ -219,12 +236,12 @@ function isLoggedIn(req, res, next) {
 
 //로그인
 router.get("/login", (req, res, next) => {
-  // if (req.user) {
-  //   console.log("이미 로그인함");
-  //   return res.send(
-  //     "<script>alert('이미 로그인했잖니');location.href='/';</script>"
-  //   );
-  // }
+  if (req.user) {
+    console.log("이미 로그인함");
+    return res.send(
+      "<script>alert('이미 로그인했습니다');location.href='/fail';</script>"
+    );
+  }
   var msg;
   var errMsg = req.flash("error");
   if (errMsg.length) {
@@ -233,6 +250,7 @@ router.get("/login", (req, res, next) => {
   res.render("login.ejs", {
     title: "login",
     message: msg,
+    srUrl: srUrl,
   });
 });
 
@@ -259,7 +277,9 @@ router.get("/login", (req, res, next) => {
 router.get("/logout", (req, res) => {
   if (!req.session.passport) {
     console.log("로그인하지 않음");
-    res.redirect("/");
+    return res.send(
+      "<script>alert('로그인하지 않았습니다');location.href='/';</script>"
+    );
   } else {
     req.session.destroy((err) => {
       if (err) throw err;

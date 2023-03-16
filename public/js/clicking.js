@@ -44,16 +44,16 @@ btnCreate.addEventListener("click", (e) => {
 
 //join
 btnJoin.addEventListener("click", (e) => {
-  //if (gameId === null) gameId = txtGameId.value;
-  //  console.log("join game : " + gameId + " client id " + clientId);
-  //
-  // const payLoad = {
-  //  method: "join",
-  //  clientId: clientId,
-  //   gameId: gameId,
-  //};
-  //btnReady.removeAttribute("disabled");
-  //ws.send(JSON.stringify(payLoad));
+  if (gameId === null) gameId = txtGameId.value;
+  console.log("join game : " + gameId + " client id " + clientId);
+
+  const payLoad = {
+    method: "join",
+    clientId: clientId,
+    gameId: gameId,
+  };
+  btnReady.removeAttribute("disabled");
+  ws.send(JSON.stringify(payLoad));
 });
 
 //start

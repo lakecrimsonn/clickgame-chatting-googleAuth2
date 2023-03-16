@@ -4,7 +4,7 @@ const app = express();
 const WebSocketServer = require("websocket").server;
 const http = require("http");
 const { use } = require("passport");
-const port = 8080;
+const port = 80;
 
 app.use(express.urlencoded({ extended: true }));
 app.use("/", require("./routes/auth.js"));
@@ -14,7 +14,7 @@ app.use(express.static("public"));
 
 const conn = require("./lib/db")();
 
-const colors = ["red", "green", "blue", "magenta", "purple", "plum", "orange"];
+const colors = ["red", "green", "blue", "yellow"];
 const clients1 = [];
 let history = [];
 let userInfo;
@@ -60,7 +60,7 @@ app.get("/clicking", (req, res, next) => {
   if (!req.user) {
     console.log("로그인 하고 오렴");
     return res.send(
-      "<script>alert('로그인 하고 오렴');location.href='/';</script>"
+      "<script>alert('로그인을 먼저 해주세요');location.href='/';</script>"
     );
   } else {
     userInfo = req.user;
