@@ -197,7 +197,7 @@ wsServer2.on("request", (request) => {
       const gameId = guid();
       games[gameId] = {
         id: gameId,
-        balls: 20,
+        balls: 100,
         clients: [],
       };
 
@@ -321,7 +321,8 @@ wsServer2.on("request", (request) => {
       console.log(games[gameId]);
 
       var pColor = Object.values(games[gameId].state);
-      var wBallsNum = parseInt(games[gameId].balls * 0.5);
+      //var wBallsNum = parseInt(games[gameId].balls * 0.5);
+      var wBallsNum = 10;
       var pCnt = {
         rCnt: 0,
         gCnt: 0,

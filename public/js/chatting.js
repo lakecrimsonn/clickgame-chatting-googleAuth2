@@ -27,6 +27,11 @@ $(function () {
 
   connection.onopen = function () {
     input.removeAttr("disabled");
+    content.html(
+      $("<p>", {
+        text: "admin : 게임 끝나고 방 나갈때 exit 꼭 눌러주기",
+      })
+    );
   };
 
   connection.onerror = function (error) {

@@ -206,8 +206,8 @@ ws.onmessage = (message) => {
       b.tag = i + 1;
       b.className = "btn btn-outline-secondary mx-1 my-1";
       b.textContent = i + 1;
-      b.style.width = "150px";
-      b.style.height = "150px";
+      b.style.width = "55px";
+      b.style.height = "55px";
       b.style.backgroundColor = "#ffffff";
       b.addEventListener("click", (e) => {
         console.log(playerColor);
